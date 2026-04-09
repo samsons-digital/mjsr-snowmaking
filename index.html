@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MJSR Snowmaking Master Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ─────────────────────────────────────────────────────────── */
+:root {
+  --navy:       #0b1f3a;
+  --navy-mid:   #112849;
+  --navy-light: #1a3a5c;
+  --ice:        #c8e8f5;
+  --ice-dim:    #8bbdd4;
+  --snow:       #f0f6fa;
+  --gold:       #c9a84c;
+  --gold-dim:   #9a7a30;
+  --red:        #e53e3e;
+  --amber:      #d97706;
+  --green:      #16a34a;
+  --green-dim:  #dcfce7;
+  --cyan:       #06b6d4;
+  --border:     rgba(200,232,245,0.12);
+  --glass:      rgba(11,31,58,0.85);
+  --radius:     10px;
+  --font-head:  'Barlow Condensed', sans-serif;
+  --font-body:  'Barlow', sans-serif;
+  --font-mono:  'JetBrains Mono', monospace;
+}
+
+/* ── RESET ───────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{
+  background: var(--navy);
+  color: var(--snow);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── BACKGROUND ──────────────────────────────────────────────────────── */
+body::before {
+  content:'';
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 10%, rgba(6,182,212,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(201,168,76,0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #0b1f3a 0%, #071428 60%, #040d1a 100%);
+  pointer-events:none;
+}
+
+/* ── HEADER ──────────────────────────────────────────────────────────── */
+#app-header {
+  position: sticky; top:0; z-index:100;
+  background: rgba(7,20,40,0.95);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 20px;
+  height: 58px;
+}
+.header-logo {
+  display:flex; align-items:center; gap:10px; flex-shrink:0;
+}
+.header-logo svg { width:28px; height:28px; }
+.header-title {
+  font-family: var(--font-head);
+  font-size: 1.35rem; font-weight:700; letter-spacing:0.04em;
+  color: var(--snow);
+}
+.header-title span { color: var(--ice); font-weight:300; }
+.header-live {
+  margin-left:auto;
+  display:flex; align-items:center; gap:16px;
+}
+.live-badge {
+  display:flex; align-items:center; gap:6px;
+  font-family:var(--font-mono); font-size:0.72rem;
+  color: var(--ice-dim);
+}
+.live-dot {
+  width:8px; height:8px; border-radius:50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.live-dot.warn { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.live-dot.off  { background: var(--red);   box-shadow: 0 0 6px var(--red); animation:none; }
+@keyframes pulse-dot {
+  0%,100%{opacity:1; transform:scale(1)}
+  50%{opacity:0.5; transform:scale(0.8)}
+}
+#live-wb-header {
+  font-family:var(--font-head); font-size:1.1rem; font-weight:700;
+  letter-spacing:0.05em;
+}
+
+/* ── NAV TABS ────────────────────────────────────────────────────────── */
+#nav-tabs {
+  display:flex; gap:2px;
+  background: rgba(7,20,40,0.9);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  position:sticky; top:58px; z-index:99;
+  overflow-x:auto;
+}
+.nav-tab {
+  font-family:var(--font-head); font-size:0.85rem; font-weight:600;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding: 12px 20px;
+  border:none; background:none; color: var(--ice-dim);
+  cursor:pointer; border-bottom: 3px solid transparent;
+  white-space:nowrap; transition: color .2s, border-color .2s;
+  display:flex; align-items:center; gap:7px;
+}
+.nav-tab:hover { color: var(--snow); }
+.nav-tab.active { color: var(--ice); border-bottom-color: var(--cyan); }
+.nav-tab svg { width:15px; height:15px; opacity:0.8; }
+
+/* ── MAIN CONTENT ────────────────────────────────────────────────────── */
+#main { position:relative; z-index:1; padding:24px; max-width:1400px; margin:0 auto; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── SECTION TITLE ───────────────────────────────────────────────────── */
+.section-title {
+  font-family:var(--font-head); font-size:1.5rem; font-weight:700;
+  letter-spacing:0.06em; color:var(--snow);
+  margin-bottom:20px; padding-bottom:10px;
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.section-title small {
+  font-size:0.75rem; font-weight:400; color:var(--ice-dim);
+  font-family:var(--font-body); letter-spacing:0.02em; margin-left:auto;
+}
+
+/* ── GRID HELPERS ────────────────────────────────────────────────────── */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.grid-auto { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+
+/* ── CARD ────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  backdrop-filter: blur(8px);
+}
+.card-title {
+  font-family:var(--font-head); font-size:0.8rem; font-weight:600;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--ice-dim);
+  margin-bottom:10px;
+}
+
+/* ── KPI TILES ───────────────────────────────────────────────────────── */
+.kpi-tile {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px 18px;
+  position:relative; overflow:hidden;
+}
+.kpi-tile::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, var(--accent-color,var(--cyan)), transparent);
+}
+.kpi-label {
+  font-family:var(--font-head); font-size:0.72rem; font-weight:600;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--ice-dim);
+  margin-bottom:6px;
+}
+.kpi-value {
+  font-family:var(--font-head); font-size:2rem; font-weight:800;
+  letter-spacing:0.02em; line-height:1;
+  color: var(--snow);
+}
+.kpi-value.big { font-size:2.6rem; }
+.kpi-unit { font-size:1rem; font-weight:400; color:var(--ice-dim); margin-left:4px; }
+.kpi-sub { font-size:0.75rem; color:var(--ice-dim); margin-top:4px; font-family:var(--font-body); }
+.kpi-tile.ice    { --accent-color: var(--cyan); }
+.kpi-tile.gold   { --accent-color: var(--gold); }
+.kpi-tile.green  { --accent-color: var(--green); }
+.kpi-tile.amber  { --accent-color: var(--amber); }
+.kpi-tile.red    { --accent-color: var(--red); }
+
+/* ── CONDITION BANNER ────────────────────────────────────────────────── */
+#condition-banner {
+  border-radius:var(--radius); padding:16px 22px;
+  display:flex; align-items:center; gap:16px;
+  margin-bottom:20px; border:1px solid;
+  transition: all .5s ease;
+}
+#condition-banner.good { background:rgba(22,163,74,0.15); border-color:rgba(22,163,74,0.4); }
+#condition-banner.humid { background:rgba(6,182,212,0.12); border-color:rgba(6,182,212,0.4); }
+#condition-banner.warm { background:rgba(229,62,62,0.12); border-color:rgba(229,62,62,0.3); }
+.banner-icon { font-size:2rem; flex-shrink:0; }
+.banner-main { font-family:var(--font-head); font-size:1.4rem; font-weight:700; letter-spacing:0.04em; }
+.banner-sub  { font-size:0.82rem; color:var(--ice-dim); margin-top:2px; }
+.banner-rec  { margin-left:auto; text-align:right; }
+.banner-rec-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ice-dim); }
+.banner-rec-val { font-family:var(--font-head); font-size:1.5rem; font-weight:800; color:var(--gold); }
+
+/* ── GUN STATUS CARDS ────────────────────────────────────────────────── */
+.gun-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+  position:relative; overflow:hidden;
+}
+.gun-card-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:12px;
+}
+.gun-id { font-family:var(--font-head); font-size:1.1rem; font-weight:800; letter-spacing:0.05em; }
+.gun-location {
+  font-family:var(--font-mono); font-size:0.72rem;
+  background: rgba(200,232,245,0.1);
+  padding:2px 8px; border-radius:4px; color:var(--ice);
+}
+.gun-stat-row { display:flex; gap:12px; }
+.gun-stat { flex:1; }
+.gun-stat-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ice-dim); }
+.gun-stat-val { font-family:var(--font-head); font-size:1.3rem; font-weight:700; }
+.gun-season-bar {
+  margin-top:10px; height:4px; background:rgba(200,232,245,0.1);
+  border-radius:2px; overflow:hidden;
+}
+.gun-season-bar-fill { height:100%; border-radius:2px; background: var(--cyan); transition:width .8s ease; }
+
+/* ── WEATHER GAUGES ──────────────────────────────────────────────────── */
+.wx-grid {
+  display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+  gap:12px; margin-bottom:20px;
+}
+.wx-tile {
+  background: rgba(11,31,58,0.7);
+  border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.wx-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--ice-dim); }
+.wx-val { font-family:var(--font-head); font-size:1.6rem; font-weight:700; line-height:1; }
+.wx-val.critical { color: var(--cyan); text-shadow: 0 0 20px rgba(6,182,212,0.4); }
+.wx-val.warn { color: var(--amber); }
+.wx-val.ok   { color: var(--green); }
+.wx-unit { font-size:0.75rem; color:var(--ice-dim); }
+
+/* ── CHART CONTAINER ─────────────────────────────────────────────────── */
+.chart-wrap {
+  background: var(--glass);
+  border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px 20px; margin-bottom:16px;
+}
+.chart-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:12px;
+}
+.chart-title { font-family:var(--font-head); font-size:0.85rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--ice); }
+.chart-controls { display:flex; gap:6px; }
+.chart-btn {
+  font-family:var(--font-head); font-size:0.7rem; font-weight:600;
+  letter-spacing:0.06em; text-transform:uppercase;
+  padding:4px 10px; border-radius:4px; border:1px solid var(--border);
+  background:transparent; color:var(--ice-dim); cursor:pointer; transition:.2s;
+}
+.chart-btn:hover,.chart-btn.active { background:rgba(6,182,212,0.15); border-color:var(--cyan); color:var(--ice); }
+canvas { width:100%!important; }
+
+/* ── TA GUIDE TABLE ──────────────────────────────────────────────────── */
+.ta-table-wrap { overflow-x:auto; }
+.ta-table {
+  width:100%; border-collapse:collapse;
+  font-family:var(--font-mono); font-size:0.75rem;
+}
+.ta-table th, .ta-table td {
+  padding:7px 10px; text-align:center;
+  border:1px solid var(--border);
+}
+.ta-table th { background:var(--navy-light); color:var(--ice); font-weight:600; letter-spacing:0.06em; }
+.ta-table td { background:var(--navy-mid); }
+.ta-cell-0  { background:rgba(229,62,62,0.25)!important; color:#fca5a5; }
+.ta-cell-low { background:rgba(217,119,6,0.25)!important; color:#fcd34d; }
+.ta-cell-mid { background:rgba(22,163,74,0.2)!important; color:#86efac; }
+.ta-cell-full{ background:rgba(22,163,74,0.45)!important; color:#ffffff; font-weight:700; }
+.ta-row-highlight td { outline:2px solid var(--gold); outline-offset:-1px; }
+
+/* ── FORM STYLES ─────────────────────────────────────────────────────── */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:14px; }
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-label {
+  font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em;
+  color:var(--ice-dim); font-weight:600;
+}
+.form-label .req { color:var(--gold); margin-left:2px; }
+.form-input, .form-select, .form-textarea {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200,232,245,0.15);
+  border-radius:6px; padding:9px 12px;
+  color:var(--snow); font-family:var(--font-body); font-size:0.88rem;
+  transition: border-color .2s, background .2s;
+  width:100%;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus {
+  outline:none; border-color:var(--cyan); background:rgba(6,182,212,0.06);
+}
+.form-select option { background:var(--navy-mid); color:var(--snow); }
+.form-textarea { resize:vertical; min-height:70px; }
+.form-divider {
+  grid-column:1/-1;
+  border:none; border-top:1px solid var(--border);
+  margin:4px 0;
+}
+
+/* ── PUMP GAUGE ROW ──────────────────────────────────────────────────── */
+.pump-row {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px; margin-bottom:16px;
+}
+.pump-gauge {
+  background: rgba(6,182,212,0.05);
+  border:1px solid rgba(6,182,212,0.2);
+  border-radius:8px; padding:12px 14px; text-align:center;
+}
+.pump-gauge-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ice-dim); margin-bottom:6px; }
+.pump-gauge-val { font-family:var(--font-head); font-size:1.5rem; font-weight:800; color:var(--cyan); }
+.pump-gauge-unit { font-size:0.7rem; color:var(--ice-dim); }
+
+/* ── BUTTONS ─────────────────────────────────────────────────────────── */
+.btn {
+  font-family:var(--font-head); font-size:0.88rem; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:10px 24px; border-radius:6px; border:none; cursor:pointer;
+  transition: all .2s; display:inline-flex; align-items:center; gap:8px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--cyan), #0284c7);
+  color:#fff;
+}
+.btn-primary:hover { opacity:0.88; transform:translateY(-1px); box-shadow:0 4px 14px rgba(6,182,212,0.3); }
+.btn-secondary {
+  background:transparent; border:1px solid var(--border);
+  color:var(--ice-dim);
+}
+.btn-secondary:hover { border-color:var(--cyan); color:var(--ice); }
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color:var(--navy);
+}
+.btn-gold:hover { opacity:0.88; transform:translateY(-1px); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; transform:none!important; }
+
+/* ── LOG TABLE ───────────────────────────────────────────────────────── */
+.log-table-wrap { overflow-x:auto; margin-top:16px; }
+.log-table {
+  width:100%; border-collapse:collapse;
+  font-size:0.8rem;
+}
+.log-table th {
+  background:var(--navy-light); color:var(--ice);
+  font-family:var(--font-head); font-size:0.72rem; font-weight:600;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:9px 12px; text-align:left; white-space:nowrap;
+  border-bottom:1px solid var(--border);
+}
+.log-table td {
+  padding:8px 12px; border-bottom:1px solid var(--border);
+  color:var(--snow); font-family:var(--font-body);
+  white-space:nowrap;
+}
+.log-table tr:hover td { background:rgba(200,232,245,0.04); }
+.log-table .mono { font-family:var(--font-mono); font-size:0.75rem; }
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-family:var(--font-head); font-size:0.68rem; font-weight:600;
+  letter-spacing:0.06em; text-transform:uppercase;
+}
+.badge-swing  { background:rgba(201,168,76,0.2);  color:var(--gold); }
+.badge-grave  { background:rgba(6,182,212,0.15);  color:var(--cyan); }
+.badge-day    { background:rgba(22,163,74,0.15);  color:#86efac; }
+.badge-fg01   { background:rgba(229,62,62,0.15);  color:#fca5a5; }
+.badge-fg02   { background:rgba(6,182,212,0.15);  color:var(--cyan); }
+.badge-fg03   { background:rgba(201,168,76,0.2);  color:var(--gold); }
+
+/* ── LOG FILTER BAR ──────────────────────────────────────────────────── */
+.log-filter-bar {
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  padding:12px 16px; background:rgba(255,255,255,0.03);
+  border:1px solid var(--border); border-radius:var(--radius);
+  margin-bottom:4px;
+}
+.log-filter-bar label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ice-dim); }
+.log-filter-bar .form-input,.log-filter-bar .form-select { width:auto; padding:6px 10px; font-size:0.8rem; }
+
+/* ── TOAST ───────────────────────────────────────────────────────────── */
+#toast-wrap { position:fixed; top:74px; right:20px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  background:var(--navy-light); border:1px solid var(--border);
+  border-radius:8px; padding:12px 18px;
+  font-size:0.82rem; color:var(--snow);
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  animation:slideIn .3s ease;
+  display:flex; align-items:center; gap:10px; min-width:260px;
+}
+.toast.success { border-left:3px solid var(--green); }
+.toast.error   { border-left:3px solid var(--red); }
+.toast.info    { border-left:3px solid var(--cyan); }
+@keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+
+/* ── SPINNER ─────────────────────────────────────────────────────────── */
+.spinner {
+  width:18px; height:18px;
+  border:2px solid rgba(200,232,245,0.2);
+  border-top-color:var(--cyan);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-row td { text-align:center; color:var(--ice-dim); padding:24px!important; }
+
+/* ── WB STATUS PILL ──────────────────────────────────────────────────── */
+.wb-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:20px;
+  font-family:var(--font-head); font-size:0.78rem; font-weight:700;
+  letter-spacing:0.06em;
+}
+.wb-pill.ok    { background:rgba(22,163,74,0.2);  color:#86efac; border:1px solid rgba(22,163,74,0.4); }
+.wb-pill.warn  { background:rgba(217,119,6,0.2);  color:#fcd34d; border:1px solid rgba(217,119,6,0.4); }
+.wb-pill.hot   { background:rgba(229,62,62,0.15); color:#fca5a5; border:1px solid rgba(229,62,62,0.3); }
+
+/* ── FORECAST STRIP ──────────────────────────────────────────────────── */
+.forecast-strip { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+.forecast-day {
+  flex-shrink:0; min-width:100px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border); border-radius:8px;
+  padding:12px 10px; text-align:center;
+}
+.fc-date { font-size:0.7rem; color:var(--ice-dim); margin-bottom:4px; }
+.fc-wb { font-family:var(--font-head); font-size:1.1rem; font-weight:700; }
+.fc-wb.green { color:var(--cyan); }
+.fc-wb.amber { color:var(--amber); }
+.fc-wb.red   { color:#fca5a5; }
+.fc-range { font-size:0.68rem; color:var(--ice-dim); margin-top:4px; }
+
+/* ── MONTHLY BAR CHART ───────────────────────────────────────────────── */
+.monthly-bars { display:flex; gap:8px; align-items:flex-end; height:100px; padding-top:8px; }
+.m-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.m-bar { width:100%; border-radius:4px 4px 0 0; background:var(--cyan); opacity:0.7; min-height:2px; transition:height .8s ease; }
+.m-bar-label { font-size:0.62rem; color:var(--ice-dim); white-space:nowrap; }
+.m-bar-val { font-family:var(--font-head); font-size:0.72rem; font-weight:700; color:var(--ice); }
+
+/* ── TABS WITHIN PANEL ───────────────────────────────────────────────── */
+.inner-tabs { display:flex; gap:8px; margin-bottom:16px; }
+.inner-tab {
+  font-family:var(--font-head); font-size:0.78rem; font-weight:600;
+  letter-spacing:0.08em; text-transform:uppercase;
+  padding:8px 16px; border-radius:6px; border:1px solid var(--border);
+  background:transparent; color:var(--ice-dim); cursor:pointer; transition:.2s;
+}
+.inner-tab.active { background:rgba(6,182,212,0.12); border-color:var(--cyan); color:var(--ice); }
+
+/* ── SCROLLBAR ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(200,232,245,0.15); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(200,232,245,0.3); }
+
+/* ── UTIL ────────────────────────────────────────────────────────────── */
+.mt-16 { margin-top:16px; }
+.mt-20 { margin-top:20px; }
+.mb-16 { margin-bottom:16px; }
+.mb-20 { margin-bottom:20px; }
+.flex-between { display:flex; justify-content:space-between; align-items:center; }
+.text-dim { color:var(--ice-dim); font-size:0.82rem; }
+.text-mono { font-family:var(--font-mono); }
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.72rem; background:rgba(200,232,245,0.08); color:var(--ice-dim); }
+hr.divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="app-header">
+  <div class="header-logo">
+    <svg viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="13" stroke="rgba(200,232,245,0.3)" stroke-width="1.5"/>
+      <path d="M14 4 L14 24 M4 14 L24 14 M6.9 6.9 L21.1 21.1 M21.1 6.9 L6.9 21.1" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="14" cy="14" r="3" fill="#06b6d4"/>
+    </svg>
+    <div class="header-title">MJSR <span>Snowmaking Portal</span></div>
+  </div>
+  <div class="header-live">
+    <div id="live-wb-header" style="color:var(--ice-dim)">WB: —</div>
+    <div class="live-badge">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-status-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<nav id="nav-tabs">
+  <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">
+    <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-tab" data-tab="weather" onclick="switchTab('weather')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+    Weather
+  </button>
+  <button class="nav-tab" data-tab="fangun" onclick="switchTab('fangun')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1C5 1 3 4 5.5 6.5M8 15c3 0 5-3 2.5-5.5M15 8c0-3-3-5-5.5-2.5M1 8c0 3 3 5 5.5 2.5"/></svg>
+    Fan Gun Log
+  </button>
+  <button class="nav-tab" data-tab="pumphouse" onclick="switchTab('pumphouse')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="12" height="7" rx="1"/><path d="M5 6V4a3 3 0 016 0v2M8 9.5v2"/></svg>
+    Pumphouse Log
+  </button>
+  <button class="nav-tab" data-tab="sublog" onclick="switchTab('sublog')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v12H2zM5 5h6M5 8h6M5 11h4"/></svg>
+    Submissions Log
+  </button>
+</nav>
+
+<div id="main">
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 1: DASHBOARD
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-dashboard" class="tab-panel active">
+
+  <!-- Condition Banner -->
+  <div id="condition-banner" class="warm">
+    <div class="banner-icon">🌡️</div>
+    <div>
+      <div class="banner-main" id="banner-condition-text">Loading conditions…</div>
+      <div class="banner-sub" id="banner-condition-sub">Fetching live Ecowitt data</div>
+    </div>
+    <div class="banner-rec">
+      <div class="banner-rec-label">Rec. Banks</div>
+      <div class="banner-rec-val" id="banner-rec-banks">—</div>
+    </div>
+  </div>
+
+  <!-- Live Weather KPIs -->
+  <div class="grid-4 mb-16">
+    <div class="kpi-tile ice">
+      <div class="kpi-label">Wet Bulb Temp</div>
+      <div class="kpi-value big" id="dash-wb">—<span class="kpi-unit">°C</span></div>
+      <div class="kpi-sub" id="dash-wb-sub">—</div>
+    </div>
+    <div class="kpi-tile gold">
+      <div class="kpi-label">Air Temp</div>
+      <div class="kpi-value" id="dash-temp">—<span class="kpi-unit">°C</span></div>
+      <div class="kpi-sub" id="dash-rh-sub">RH: —%</div>
+    </div>
+    <div class="kpi-tile green">
+      <div class="kpi-label">Wind Speed</div>
+      <div class="kpi-value" id="dash-wind">—<span class="kpi-unit">km/h</span></div>
+      <div class="kpi-sub" id="dash-wind-dir">Direction: —</div>
+    </div>
+    <div class="kpi-tile amber">
+      <div class="kpi-label">Pressure</div>
+      <div class="kpi-value" id="dash-pres">—<span class="kpi-unit">hPa</span></div>
+      <div class="kpi-sub" id="dash-solar-sub">Solar: — W/m²</div>
+    </div>
+  </div>
+
+  <!-- Season Totals -->
+  <div class="section-title">Season Totals <small id="dash-season-note">Loading…</small></div>
+  <div class="grid-4 mb-16">
+    <div class="kpi-tile ice">
+      <div class="kpi-label">Total Gun Hours</div>
+      <div class="kpi-value" id="dash-total-hrs">—<span class="kpi-unit">hrs</span></div>
+      <div class="kpi-sub">All guns combined</div>
+    </div>
+    <div class="kpi-tile green">
+      <div class="kpi-label">Total Water Used</div>
+      <div class="kpi-value" id="dash-water">—<span class="kpi-unit">m³</span></div>
+      <div class="kpi-sub">Season total</div>
+    </div>
+    <div class="kpi-tile gold">
+      <div class="kpi-label">Snow Produced</div>
+      <div class="kpi-value" id="dash-snow">—<span class="kpi-unit">m³</span></div>
+      <div class="kpi-sub">Season total</div>
+    </div>
+    <div class="kpi-tile amber">
+      <div class="kpi-label">Utilisation</div>
+      <div class="kpi-value" id="dash-util">—<span class="kpi-unit">%</span></div>
+      <div class="kpi-sub">Of opportunity hours</div>
+    </div>
+  </div>
+
+  <!-- Per-Gun Summary -->
+  <div class="section-title">Fan Gun Status</div>
+  <div class="grid-3 mb-16" id="gun-cards-wrap">
+    <div class="gun-card">
+      <div class="gun-card-header">
+        <span class="gun-id">FG-01</span>
+        <span class="gun-location">B2</span>
+      </div>
+      <div class="gun-stat-row">
+        <div class="gun-stat"><div class="gun-stat-label">Season Hrs</div><div class="gun-stat-val" id="gun-hrs-FG-01">—</div></div>
+        <div class="gun-stat"><div class="gun-stat-label">% of Total</div><div class="gun-stat-val" id="gun-pct-FG-01">—</div></div>
+      </div>
+      <div class="gun-season-bar"><div class="gun-season-bar-fill" id="gun-bar-FG-01" style="width:0%"></div></div>
+    </div>
+    <div class="gun-card">
+      <div class="gun-card-header">
+        <span class="gun-id">FG-02</span>
+        <span class="gun-location">B1</span>
+      </div>
+      <div class="gun-stat-row">
+        <div class="gun-stat"><div class="gun-stat-label">Season Hrs</div><div class="gun-stat-val" id="gun-hrs-FG-02">—</div></div>
+        <div class="gun-stat"><div class="gun-stat-label">% of Total</div><div class="gun-stat-val" id="gun-pct-FG-02">—</div></div>
+      </div>
+      <div class="gun-season-bar"><div class="gun-season-bar-fill" id="gun-bar-FG-02" style="width:0%"></div></div>
+    </div>
+    <div class="gun-card">
+      <div class="gun-card-header">
+        <span class="gun-id">FG-03</span>
+        <span class="gun-location">M1</span>
+      </div>
+      <div class="gun-stat-row">
+        <div class="gun-stat"><div class="gun-stat-label">Season Hrs</div><div class="gun-stat-val" id="gun-hrs-FG-03">—</div></div>
+        <div class="gun-stat"><div class="gun-stat-label">% of Total</div><div class="gun-stat-val" id="gun-pct-FG-03">—</div></div>
+      </div>
+      <div class="gun-season-bar"><div class="gun-season-bar-fill" id="gun-bar-FG-03" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Monthly Summary Bars -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Monthly Gun Hours</div>
+      <div class="monthly-bars" id="monthly-bars">
+        <div class="text-dim" style="align-self:center">Loading…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">7-Day WB Forecast</div>
+      <div class="forecast-strip" id="forecast-strip">
+        <div class="text-dim">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab-dashboard -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 2: WEATHER
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-weather" class="tab-panel">
+
+  <div class="section-title">Live Conditions <small id="wx-last-updated">—</small></div>
+
+  <!-- Live tiles -->
+  <div class="wx-grid" id="wx-live-grid">
+    <div class="wx-tile"><div class="wx-label">Wet Bulb</div><div class="wx-val critical" id="wx-wb">—</div><div class="wx-unit">°C</div></div>
+    <div class="wx-tile"><div class="wx-label">Air Temp</div><div class="wx-val" id="wx-temp">—</div><div class="wx-unit">°C</div></div>
+    <div class="wx-tile"><div class="wx-label">Humidity</div><div class="wx-val" id="wx-rh">—</div><div class="wx-unit">%</div></div>
+    <div class="wx-tile"><div class="wx-label">Dew Point</div><div class="wx-val" id="wx-dew">—</div><div class="wx-unit">°C</div></div>
+    <div class="wx-tile"><div class="wx-label">App Temp</div><div class="wx-val" id="wx-app">—</div><div class="wx-unit">°C</div></div>
+    <div class="wx-tile"><div class="wx-label">Wind Speed</div><div class="wx-val" id="wx-wind">—</div><div class="wx-unit">km/h</div></div>
+    <div class="wx-tile"><div class="wx-label">Pressure</div><div class="wx-val" id="wx-pres">—</div><div class="wx-unit">hPa</div></div>
+    <div class="wx-tile"><div class="wx-label">Solar</div><div class="wx-val" id="wx-solar">—</div><div class="wx-unit">W/m²</div></div>
+    <div class="wx-tile"><div class="wx-label">Rain Today</div><div class="wx-val" id="wx-rain">—</div><div class="wx-unit">mm</div></div>
+  </div>
+
+  <!-- Snow condition pill -->
+  <div style="margin-bottom:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <span id="wx-condition-pill" class="wb-pill hot">⚠ Loading…</span>
+    <span class="text-dim" id="wx-ta-rec">TA Guide: —</span>
+  </div>
+
+  <!-- WB Trend Chart -->
+  <div class="chart-wrap">
+    <div class="chart-header">
+      <div class="chart-title">Wet Bulb Trend</div>
+      <div class="chart-controls">
+        <button class="chart-btn active" onclick="loadWBChart(7)">7 hr</button>
+        <button class="chart-btn" onclick="loadWBChart(24)">24 hr</button>
+        <button class="chart-btn" onclick="loadWBChart(48)">48 hr</button>
+        <button class="chart-btn" onclick="loadWBChart(168)">7 day</button>
+      </div>
+    </div>
+    <canvas id="wb-chart" height="90"></canvas>
+  </div>
+
+  <!-- Temp + RH Chart -->
+  <div class="chart-wrap">
+    <div class="chart-header">
+      <div class="chart-title">Temperature &amp; Humidity (24hr)</div>
+    </div>
+    <canvas id="tempRH-chart" height="80"></canvas>
+  </div>
+
+  <!-- 7-Day Forecast -->
+  <div class="section-title mt-20">7-Day Forecast</div>
+  <div class="forecast-strip" id="wx-forecast-strip">
+    <div class="text-dim">Loading…</div>
+  </div>
+
+  <!-- TA Guide -->
+  <div class="section-title mt-20">TA Guide — Recommended Banks Open</div>
+  <div class="card">
+    <div style="margin-bottom:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <span class="text-dim">Current pressure:</span>
+      <input type="number" id="ta-pressure-input" class="form-input" style="width:100px" value="14" min="10" max="40" step="0.5" onchange="renderTAGuide()">
+      <span class="text-dim">bar &nbsp;|&nbsp; Highlighted row = current WBT</span>
+    </div>
+    <div class="ta-table-wrap">
+      <table class="ta-table" id="ta-guide-table">
+        <thead></thead><tbody></tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:16px; font-size:0.75rem; flex-wrap:wrap;">
+      <span style="color:#fca5a5">■ 0 — No snowmaking</span>
+      <span style="color:#fcd34d">■ 1–3 — Marginal</span>
+      <span style="color:#86efac">■ 4–7 — Good</span>
+      <span style="color:#ffffff; background:rgba(22,163,74,0.4); padding:0 4px; border-radius:2px">■ 8–12 — Optimal</span>
+    </div>
+  </div>
+
+</div><!-- /tab-weather -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 3: FAN GUN LOG
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-fangun" class="tab-panel">
+  <div class="inner-tabs">
+    <button class="inner-tab active" onclick="showFGInner('submit')">Submit Log</button>
+    <button class="inner-tab" onclick="showFGInner('view')">View Log</button>
+  </div>
+
+  <!-- SUBMIT FORM -->
+  <div id="fg-inner-submit">
+    <div class="section-title">Fan Gun Log Entry</div>
+    <div class="card">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Snowmaking Date (Night of)<span class="req">*</span></label>
+          <input type="date" id="fg-date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shift<span class="req">*</span></label>
+          <select id="fg-shift" class="form-select">
+            <option value="">— Select Shift —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Operator(s)<span class="req">*</span></label>
+          <select id="fg-operator" class="form-select">
+            <option value="">— Select Operator —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time of Log<span class="req">*</span></label>
+          <input type="time" id="fg-timelog" class="form-input">
+        </div>
+      </div>
+
+      <hr class="form-divider">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Fan Gun<span class="req">*</span></label>
+          <select id="fg-gun" class="form-select">
+            <option value="">— Select Gun —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hydrant<span class="req">*</span></label>
+          <select id="fg-location" class="form-select">
+            <option value="">— Select Hydrant —</option>
+            <optgroup label="Beginner Slope">
+              <option value="B1">B1 — Beginner Slope</option>
+              <option value="B2">B2 — Beginner Slope</option>
+              <option value="B3">B3 — Beginner Slope</option>
+            </optgroup>
+            <optgroup label="Main Slope">
+              <option value="M1">M1 — Main Slope</option>
+              <option value="M2">M2 — Main Slope</option>
+              <option value="M3">M3 — Main Slope</option>
+              <option value="M4">M4 — Main Slope</option>
+              <option value="M5">M5 — Main Slope</option>
+              <option value="M6">M6 — Main Slope</option>
+              <option value="M7">M7 — Main Slope</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Banks Open (0–12)<span class="req">*</span></label>
+          <input type="number" id="fg-banks" class="form-input" min="0" max="12" step="1" placeholder="0–12">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Water Pressure (bar)<span class="req">*</span></label>
+          <input type="number" id="fg-pressure" class="form-input" min="0" max="50" step="0.5" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gun Start Time</label>
+          <input type="time" id="fg-start" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gun Stop Time</label>
+          <input type="time" id="fg-stop" class="form-input">
+        </div>
+      </div>
+
+      <hr class="form-divider">
+      <div class="card-title" style="margin-bottom:12px">Pumphouse Readings (optional — log here or in Pumphouse tab)</div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Sub Pump PI102 (bar)</label>
+          <input type="number" id="fg-pi102" class="form-input" step="0.01" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sub Pump PSL101 (bar)</label>
+          <input type="number" id="fg-psl101" class="form-input" step="0.01" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Main Pump P101 (bar)</label>
+          <input type="number" id="fg-p101" class="form-input" step="0.1" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flow Rate High (L/m)</label>
+          <input type="number" id="fg-flow-high" class="form-input" step="1" placeholder="L/m">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flow Rate Low (L/m)</label>
+          <input type="number" id="fg-flow-low" class="form-input" step="1" placeholder="L/m">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pump PT101 (bar)</label>
+          <input type="number" id="fg-pt101" class="form-input" step="0.1" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pump Temp (°C)</label>
+          <input type="number" id="fg-ptemp" class="form-input" step="0.1" placeholder="°C">
+        </div>
+        <div class="form-group">
+          <label class="form-label">VSD Reading (kW)</label>
+          <input type="number" id="fg-vsd" class="form-input" step="0.01" placeholder="kW">
+        </div>
+      </div>
+
+      <hr class="form-divider">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Notes / Issues</label>
+          <textarea id="fg-notes" class="form-textarea" placeholder="Any observations, issues, or changes…"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="fg-submit-btn" onclick="submitFanGunLog()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
+          Submit Log Entry
+        </button>
+        <button class="btn btn-secondary" onclick="clearFGForm()">Clear Form</button>
+        <span id="fg-submit-status" class="text-dim"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW LOG -->
+  <div id="fg-inner-view" style="display:none">
+    <div class="section-title flex-between">
+      Fan Gun Log
+      <button class="btn btn-secondary" style="font-size:0.72rem;padding:6px 14px" onclick="loadFGLog()">↺ Refresh</button>
+    </div>
+    <div class="log-filter-bar">
+      <label>Date:</label>
+      <input type="date" id="fg-filter-date" class="form-input" onchange="loadFGLog()">
+      <label>Gun:</label>
+      <select id="fg-filter-gun" class="form-select" onchange="loadFGLog()">
+        <option value="">All Guns</option>
+        <option>FG-01</option><option>FG-02</option><option>FG-03</option>
+      </select>
+      <label>Hydrant:</label>
+      <select id="fg-filter-hydrant" class="form-select" onchange="loadFGLog()">
+        <option value="">All Hydrants</option>
+        <optgroup label="Beginner Slope">
+          <option>B1</option><option>B2</option><option>B3</option>
+        </optgroup>
+        <optgroup label="Main Slope">
+          <option>M1</option><option>M2</option><option>M3</option><option>M4</option>
+          <option>M5</option><option>M6</option><option>M7</option>
+        </optgroup>
+      </select>
+      <label>Shift:</label>
+      <select id="fg-filter-shift" class="form-select" onchange="loadFGLog()">
+        <option value="">All Shifts</option>
+      </select>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table" id="fg-log-table">
+        <thead>
+          <tr>
+            <th>Date (Night of)</th><th>Shift</th><th>Operator(s)</th>
+            <th>Gun</th><th>Hydrant</th><th>Time</th>
+            <th>Banks</th><th>Pressure</th><th>Start</th><th>Stop</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="fg-log-tbody"><tr class="loading-row"><td colspan="11"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /tab-fangun -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 4: PUMPHOUSE LOG
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-pumphouse" class="tab-panel">
+  <div class="inner-tabs">
+    <button class="inner-tab active" onclick="showPHInner('submit')">Submit Reading</button>
+    <button class="inner-tab" onclick="showPHInner('view')">View Log</button>
+  </div>
+
+  <!-- SUBMIT -->
+  <div id="ph-inner-submit">
+    <div class="section-title">Pumphouse Log Entry</div>
+    <div class="card">
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Snowmaking Date (Night of)<span class="req">*</span></label>
+          <input type="date" id="ph-date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shift<span class="req">*</span></label>
+          <select id="ph-shift" class="form-select">
+            <option value="">— Select Shift —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Operator<span class="req">*</span></label>
+          <select id="ph-operator" class="form-select">
+            <option value="">— Select Operator —</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="form-divider">
+      <div class="card-title" style="margin-bottom:14px">Pump Readings</div>
+
+      <div class="pump-row" id="ph-live-gauges">
+        <div class="pump-gauge"><div class="pump-gauge-label">Sub Pump PI102</div><div class="pump-gauge-val" id="ph-live-pi102">—</div><div class="pump-gauge-unit">bar</div></div>
+        <div class="pump-gauge"><div class="pump-gauge-label">Sub Pump PSL101</div><div class="pump-gauge-val" id="ph-live-psl101">—</div><div class="pump-gauge-unit">bar</div></div>
+        <div class="pump-gauge"><div class="pump-gauge-label">Main Pump P101</div><div class="pump-gauge-val" id="ph-live-p101">—</div><div class="pump-gauge-unit">bar</div></div>
+        <div class="pump-gauge"><div class="pump-gauge-label">Flow High</div><div class="pump-gauge-val" id="ph-live-fh">—</div><div class="pump-gauge-unit">L/m</div></div>
+        <div class="pump-gauge"><div class="pump-gauge-label">Flow Low</div><div class="pump-gauge-val" id="ph-live-fl">—</div><div class="pump-gauge-unit">L/m</div></div>
+        <div class="pump-gauge"><div class="pump-gauge-label">Pump PT101</div><div class="pump-gauge-val" id="ph-live-pt101">—</div><div class="pump-gauge-unit">bar</div></div>
+      </div>
+      <div class="text-dim mb-16" style="font-size:0.72rem">↑ Last submitted reading (read-only display). Enter new values below.</div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Sub Pump PI102 (bar)<span class="req">*</span></label>
+          <input type="number" id="ph-pi102" class="form-input" step="0.01" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sub Pump PSL101 (bar)<span class="req">*</span></label>
+          <input type="number" id="ph-psl101" class="form-input" step="0.01" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Main Pump P101 (bar)<span class="req">*</span></label>
+          <input type="number" id="ph-p101" class="form-input" step="0.1" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flow Rate High (L/m)<span class="req">*</span></label>
+          <input type="number" id="ph-flow-high" class="form-input" step="1" placeholder="L/m">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flow Rate Low (L/m)<span class="req">*</span></label>
+          <input type="number" id="ph-flow-low" class="form-input" step="1" placeholder="L/m">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pump PT101 (bar)</label>
+          <input type="number" id="ph-pt101" class="form-input" step="0.1" placeholder="bar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pump Temp (°C)</label>
+          <input type="number" id="ph-ptemp" class="form-input" step="0.1" placeholder="°C">
+        </div>
+        <div class="form-group">
+          <label class="form-label">VSD Reading (kW)</label>
+          <input type="number" id="ph-vsd" class="form-input" step="0.01" placeholder="kW">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Water Volume (m³)</label>
+          <input type="number" id="ph-water" class="form-input" step="0.1" placeholder="m³">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Snow Produced (m³)</label>
+          <input type="number" id="ph-snow" class="form-input" step="0.1" placeholder="m³">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reservoir Level (%)</label>
+          <input type="number" id="ph-reservoir" class="form-input" min="0" max="100" step="1" placeholder="%">
+        </div>
+      </div>
+
+      <hr class="form-divider">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Notes</label>
+          <textarea id="ph-notes" class="form-textarea" placeholder="Any pump issues, maintenance, observations…"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="ph-submit-btn" onclick="submitPumpHouse()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
+          Submit Reading
+        </button>
+        <button class="btn btn-secondary" onclick="clearPHForm()">Clear Form</button>
+        <span id="ph-submit-status" class="text-dim"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW LOG -->
+  <div id="ph-inner-view" style="display:none">
+    <div class="section-title flex-between">
+      Pumphouse Log
+      <button class="btn btn-secondary" style="font-size:0.72rem;padding:6px 14px" onclick="loadPHLog()">↺ Refresh</button>
+    </div>
+    <div class="log-filter-bar">
+      <label>Date:</label>
+      <input type="date" id="ph-filter-date" class="form-input" onchange="loadPHLog()">
+      <label>Shift:</label>
+      <select id="ph-filter-shift" class="form-select" onchange="loadPHLog()">
+        <option value="">All Shifts</option>
+      </select>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table" id="ph-log-table">
+        <thead>
+          <tr>
+            <th>Date</th><th>Shift</th><th>Operator</th>
+            <th>PI102</th><th>PSL101</th><th>P101</th>
+            <th>Flow Hi</th><th>Flow Lo</th><th>Temp °C</th>
+            <th>VSD kW</th><th>Water m³</th><th>Snow m³</th><th>Res %</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="ph-log-tbody"><tr class="loading-row"><td colspan="14"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /tab-pumphouse -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 5: SUBMISSIONS LOG
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-sublog" class="tab-panel">
+
+  <!-- Summary KPIs -->
+  <div class="grid-4 mb-16" id="sublog-kpis">
+    <div class="kpi-tile ice">
+      <div class="kpi-label">Total Fan Gun Entries</div>
+      <div class="kpi-value" id="sl-total-fg">—</div>
+      <div class="kpi-sub">All shifts combined</div>
+    </div>
+    <div class="kpi-tile gold">
+      <div class="kpi-label">Total Pumphouse Entries</div>
+      <div class="kpi-value" id="sl-total-ph">—</div>
+      <div class="kpi-sub">All shifts combined</div>
+    </div>
+    <div class="kpi-tile green">
+      <div class="kpi-label">Active Snowmaking Nights</div>
+      <div class="kpi-value" id="sl-nights">—</div>
+      <div class="kpi-sub">Unique dates logged</div>
+    </div>
+    <div class="kpi-tile amber">
+      <div class="kpi-label">Last Submission</div>
+      <div class="kpi-value" style="font-size:1.1rem" id="sl-last-sub">—</div>
+      <div class="kpi-sub" id="sl-last-sub-who">—</div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="log-filter-bar mb-16">
+    <label>Type:</label>
+    <select id="sl-filter-type" class="form-select" onchange="loadSubLog()">
+      <option value="both">All Submissions</option>
+      <option value="fangun">Fan Gun Only</option>
+      <option value="pumphouse">Pumphouse Only</option>
+    </select>
+    <label>Date From:</label>
+    <input type="date" id="sl-filter-from" class="form-input" onchange="loadSubLog()">
+    <label>To:</label>
+    <input type="date" id="sl-filter-to" class="form-input" onchange="loadSubLog()">
+    <label>Gun:</label>
+    <select id="sl-filter-gun" class="form-select" onchange="loadSubLog()">
+      <option value="">All Guns</option>
+      <option>FG-01</option><option>FG-02</option><option>FG-03</option>
+    </select>
+    <label>Hydrant:</label>
+    <select id="sl-filter-hydrant" class="form-select" onchange="loadSubLog()">
+      <option value="">All Hydrants</option>
+      <optgroup label="Beginner Slope">
+        <option>B1</option><option>B2</option><option>B3</option>
+      </optgroup>
+      <optgroup label="Main Slope">
+        <option>M1</option><option>M2</option><option>M3</option><option>M4</option>
+        <option>M5</option><option>M6</option><option>M7</option>
+      </optgroup>
+    </select>
+    <label>Shift:</label>
+    <select id="sl-filter-shift" class="form-select" onchange="loadSubLog()">
+      <option value="">All Shifts</option>
+    </select>
+    <button class="btn btn-secondary" style="font-size:0.72rem;padding:6px 14px;margin-left:auto" onclick="loadSubLog()">↺ Refresh</button>
+    <button class="btn btn-gold" style="font-size:0.72rem;padding:6px 14px" onclick="exportSubLog()">⬇ Export CSV</button>
+  </div>
+
+  <!-- Combined Timeline -->
+  <div class="section-title">Submission Timeline <small id="sl-count-label">Loading…</small></div>
+
+  <div class="log-table-wrap">
+    <table class="log-table" id="sl-combined-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Type</th>
+          <th>Night of</th>
+          <th>Shift</th>
+          <th>Operator(s)</th>
+          <th>Gun</th>
+          <th>Hydrant</th>
+          <th>Banks</th>
+          <th>Pressure</th>
+          <th>Flow Hi</th>
+          <th>Flow Lo</th>
+          <th>Water m³</th>
+          <th>Snow m³</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody id="sl-combined-tbody">
+        <tr class="loading-row"><td colspan="13"><div class="spinner"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Per-Night Summary Accordion -->
+  <div class="section-title mt-20">Per-Night Summary</div>
+  <div id="sl-nightly-wrap" class="card">
+    <div class="text-dim" style="padding:12px 0">Loading nightly breakdown…</div>
+  </div>
+
+</div><!-- /tab-sublog -->
+
+</div><!-- /main -->
+
+<!-- TOAST CONTAINER -->
+<div id="toast-wrap"></div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_JOKG6swSHVzp-sK2TTvYnV2rT357bkj7MUPeKnRXEapnISla4YFZqmdA9qnv4w0W/exec';
+const WB_THRESHOLD = -2.1;
+const REFRESH_MS   = 5 * 60 * 1000; // 5 minutes
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let liveWeather    = null;
+let appConfig      = null;
+let wbChartInst    = null;
+let tempRHChartInst= null;
+let wbChartHours   = 7;
+let taData         = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  setDefaultDates();
+  await loadConfig();
+  await refreshDashboard();
+  await loadForecast();
+  renderTAGuide();
+  setInterval(refreshDashboard, REFRESH_MS);
+});
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  if (name === 'weather') { loadWBChart(wbChartHours); loadTempRHChart(); }
+  if (name === 'fangun')  loadFGLog();
+  if (name === 'pumphouse') { loadPHLog(); loadLastPumpReading(); }
+  if (name === 'sublog')  loadSubLog();
+}
+
+function showFGInner(which) {
+  document.getElementById('fg-inner-submit').style.display = which==='submit'?'block':'none';
+  document.getElementById('fg-inner-view').style.display   = which==='view'  ?'block':'none';
+  document.querySelectorAll('#tab-fangun .inner-tab').forEach((t,i) => t.classList.toggle('active',(i===0&&which==='submit')||(i===1&&which==='view')));
+  if (which==='view') loadFGLog();
+}
+
+function showPHInner(which) {
+  document.getElementById('ph-inner-submit').style.display = which==='submit'?'block':'none';
+  document.getElementById('ph-inner-view').style.display   = which==='view'  ?'block':'none';
+  document.querySelectorAll('#tab-pumphouse .inner-tab').forEach((t,i) => t.classList.toggle('active',(i===0&&which==='submit')||(i===1&&which==='view')));
+  if (which==='view') loadPHLog();
+}
+
+// ── API CALL ──────────────────────────────────────────────────────────────────
+async function api(payload) {
+  const resp = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'text/plain' }
+  });
+  return resp.json();
+}
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    appConfig = await api({ action: 'getConfig' });
+    populateSelects();
+  } catch(e) { console.warn('Config load failed', e); }
+}
+
+function populateSelects() {
+  if (!appConfig) return;
+  const guns     = appConfig.fanGuns  || [];
+  const ops      = appConfig.operators|| [];
+  const shifts   = appConfig.shifts   || [];
+
+  // Fan gun dropdowns
+  const fgGun = document.getElementById('fg-gun');
+  guns.forEach(g => { const o=document.createElement('option'); o.value=g.id; o.textContent=g.id+' — '+g.name; fgGun.appendChild(o); });
+
+  // Operator dropdowns
+  ['fg-operator','ph-operator'].forEach(id => {
+    const sel = document.getElementById(id);
+    ops.forEach(op => { const o=document.createElement('option'); o.value=op; o.textContent=op; sel.appendChild(o); });
+  });
+
+  // Shift dropdowns
+  ['fg-shift','ph-shift','fg-filter-shift','ph-filter-shift'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    shifts.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+  });
+}
+
+
+// ── DASHBOARD REFRESH ─────────────────────────────────────────────────────────
+async function refreshDashboard() {
+  try {
+    const data = await api({ action: 'getDashboard' });
+    if (!data.ok) { setLiveDot('off','Error'); return; }
+
+    liveWeather = data.live;
+    updateLiveDisplay(data.live);
+    updateSeasonTotals(data.season);
+    updateForecast(data.live);
+    setLiveDot('on', 'Live · ' + fmtTime(new Date()));
+  } catch(e) {
+    setLiveDot('off', 'Offline');
+    console.error(e);
+  }
+}
+
+function updateLiveDisplay(wx) {
+  if (!wx || !wx.ok) return;
+
+  const wb   = wx.wb;
+  const temp = wx.tempC;
+  const rh   = wx.rh;
+
+  // Header
+  document.getElementById('live-wb-header').textContent = 'WB: ' + wb + '°C';
+  document.getElementById('live-wb-header').style.color =
+    wb <= WB_THRESHOLD ? 'var(--cyan)' : wb <= 0 ? 'var(--amber)' : '#fca5a5';
+
+  // Condition banner
+  const banner = document.getElementById('condition-banner');
+  const bText  = document.getElementById('banner-condition-text');
+  const bSub   = document.getElementById('banner-condition-sub');
+  const bIcon  = banner.querySelector('.banner-icon');
+  const bBanks = document.getElementById('banner-rec-banks');
+
+  if (wx.condition === 'DRY_SNOW') {
+    banner.className='good'; bIcon.textContent='❄️';
+    bText.textContent='DRY SNOW CONDITIONS';
+    bSub.textContent = `WBT ${wb}°C · RH ${rh}% (dry) · Snowmaking active`;
+  } else if (wx.condition === 'HUMID_SNOW') {
+    banner.className='humid'; bIcon.textContent='🌨️';
+    bText.textContent='HUMID SNOW CONDITIONS';
+    bSub.textContent = `WBT ${wb}°C · RH ${rh}% (humid) · Monitor quality`;
+  } else {
+    banner.className='warm'; bIcon.textContent='🌡️';
+    bText.textContent='TOO WARM FOR SNOWMAKING';
+    bSub.textContent = `WBT ${wb}°C · Threshold ${WB_THRESHOLD}°C · Check forecast`;
+  }
+  bBanks.textContent = wx.taRecommendedBanks > 0 ? wx.taRecommendedBanks : '—';
+
+  // KPI tiles
+  setText('dash-wb', wb);
+  setText('dash-temp', temp);
+  setText('dash-rh-sub', 'RH: ' + rh + '%');
+  setText('dash-wind', wx.windKmh);
+  setText('dash-wind-dir', 'Direction: ' + windDir(wx.windDir));
+  setText('dash-pres', wx.presHpa);
+  setText('dash-solar-sub', 'Solar: ' + wx.solar + ' W/m²');
+
+  // Weather tab tiles
+  setText('wx-wb', wb);   colourWBTile(wb);
+  setText('wx-temp', temp);
+  setText('wx-rh', rh);
+  setText('wx-dew', wx.dewC);
+  setText('wx-app', wx.appC);
+  setText('wx-wind', wx.windKmh);
+  setText('wx-pres', wx.presHpa);
+  setText('wx-solar', wx.solar);
+  setText('wx-rain', wx.rainDailyMm);
+  document.getElementById('wx-last-updated').textContent = 'Updated: ' + fmtTime(new Date());
+
+  // Condition pill
+  const pill = document.getElementById('wx-condition-pill');
+  if (wx.condition==='DRY_SNOW') { pill.className='wb-pill ok'; pill.textContent='❄ Dry Snow — Snowmaking ON'; }
+  else if (wx.condition==='HUMID_SNOW') { pill.className='wb-pill warn'; pill.textContent='🌨 Humid Snow — Monitor'; }
+  else { pill.className='wb-pill hot'; pill.textContent='⚠ Too Warm — No Snowmaking'; }
+
+  const taRec = wx.taRecommendedBanks;
+  document.getElementById('wx-ta-rec').textContent =
+    taRec > 0 ? `TA Guide recommends: ${taRec} banks open at current conditions` : 'TA Guide: No snowmaking at current WBT';
+
+  // Update TA table highlight
+  highlightTARow(wb);
+}
+
+function updateSeasonTotals(s) {
+  if (!s) return;
+  setText('dash-total-hrs', s.totalGunHours);
+  setText('dash-water', s.totalWaterM3);
+  setText('dash-snow',  s.totalSnowM3);
+  setText('dash-util',  s.utilisationPct);
+
+  const total = s.totalGunHours || 1;
+  const guns  = s.gunHoursByGun || {};
+  ['FG-01','FG-02','FG-03'].forEach(g => {
+    const hrs = guns[g] || 0;
+    const pct = Math.round((hrs/total)*100);
+    setText('gun-hrs-'+g, hrs.toFixed(1));
+    setText('gun-pct-'+g, pct+'%');
+    const bar = document.getElementById('gun-bar-'+g);
+    if (bar) bar.style.width = Math.min(pct,100)+'%';
+  });
+
+  document.getElementById('dash-season-note').textContent = s.seasonDays + ' days logged';
+}
+
+// ── FORECAST ──────────────────────────────────────────────────────────────────
+async function loadForecast() {
+  // Forecasts come from dashboard call already; rendered from liveWeather context
+  // Build static strip from known data or just show placeholder
+}
+
+function updateForecast(wx) {
+  // Monthly bars - from session data if available
+  // (placeholder until getDashboard returns monthly breakdown)
+}
+
+function renderForecastStrip(days, containerId) {
+  const wrap = document.getElementById(containerId);
+  if (!days || !days.length) { wrap.innerHTML='<div class="text-dim">No forecast data available.</div>'; return; }
+  wrap.innerHTML = days.map(d => {
+    const wb  = d.minWB;
+    const cls = wb <= WB_THRESHOLD ? 'green' : wb <= 0 ? 'amber' : 'red';
+    const dt  = new Date(d.date);
+    const label = dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    return `<div class="forecast-day">
+      <div class="fc-date">${label}</div>
+      <div class="fc-wb ${cls}">${wb}°C</div>
+      <div class="fc-range">WB ${d.minWB} – ${d.maxWB}</div>
+      <div class="fc-range">T ${d.minTemp}–${d.maxTemp}°C</div>
+    </div>`;
+  }).join('');
+}
+
+// ── WB CHART ──────────────────────────────────────────────────────────────────
+async function loadWBChart(hours) {
+  wbChartHours = hours;
+  document.querySelectorAll('#tab-weather .chart-btn').forEach(b => b.classList.remove('active'));
+  event && event.target && event.target.classList.add('active');
+
+  try {
+    const data = await api({ action:'getWeatherHistory', hours });
+    const rows = data.rows || [];
+    const labels = rows.map(r => fmtTime(new Date(r['Timestamp'])));
+    const wbVals = rows.map(r => parseFloat(r['Wet Bulb (°C)']) || null);
+
+    const ctx = document.getElementById('wb-chart').getContext('2d');
+    if (wbChartInst) wbChartInst.destroy();
+
+    wbChartInst = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Wet Bulb (°C)',
+            data: wbVals,
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6,182,212,0.08)',
+            borderWidth: 2,
+            pointRadius: rows.length > 200 ? 0 : 2,
+            fill: true,
+            tension: 0.3,
+          },
+          {
+            label: 'Threshold (-2.1°C)',
+            data: new Array(rows.length).fill(WB_THRESHOLD),
+            borderColor: 'rgba(229,62,62,0.5)',
+            borderWidth: 1.5,
+            borderDash: [6,4],
+            pointRadius: 0,
+            fill: false,
+          }
+        ]
+      },
+      options: chartOptions('Wet Bulb °C')
+    });
+  } catch(e) { console.error('WB chart error', e); }
+}
+
+async function loadTempRHChart() {
+  try {
+    const data = await api({ action:'getWeatherHistory', hours:24 });
+    const rows = data.rows || [];
+    const labels = rows.map(r => fmtTime(new Date(r['Timestamp'])));
+    const temps  = rows.map(r => parseFloat(r['Temp (°C)']) || null);
+    const rhs    = rows.map(r => parseFloat(r['Humidity (%)']) || null);
+
+    const ctx = document.getElementById('tempRH-chart').getContext('2d');
+    if (tempRHChartInst) tempRHChartInst.destroy();
+
+    tempRHChartInst = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'Temp (°C)', data:temps, borderColor:'#c9a84c', borderWidth:2, pointRadius:0, fill:false, tension:0.3, yAxisID:'y' },
+          { label:'RH (%)',    data:rhs,   borderColor:'rgba(139,189,212,0.7)', borderWidth:1.5, pointRadius:0, fill:false, tension:0.3, yAxisID:'y2', borderDash:[4,3] }
+        ]
+      },
+      options: {
+        ...chartOptions('Temp / RH'),
+        scales: {
+          x: darkAxis(),
+          y:  { ...darkAxis(), position:'left',  title:{display:true,text:'Temp °C',color:'#8bbdd4'} },
+          y2: { ...darkAxis(), position:'right', title:{display:true,text:'RH %',color:'#8bbdd4'}, grid:{drawOnChartArea:false} }
+        }
+      }
+    });
+  } catch(e) { console.error('TempRH chart error',e); }
+}
+
+function chartOptions(label) {
+  return {
+    responsive:true,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{
+      legend:{ labels:{ color:'#8bbdd4', font:{family:'Barlow Condensed', size:11} } },
+      tooltip:{ backgroundColor:'rgba(7,20,40,0.95)', borderColor:'rgba(200,232,245,0.2)', borderWidth:1, titleColor:'#c8e8f5', bodyColor:'#c8e8f5' }
+    },
+    scales:{
+      x: darkAxis(),
+      y: darkAxis()
+    }
+  };
+}
+
+function darkAxis() {
+  return {
+    grid:{ color:'rgba(200,232,245,0.06)' },
+    ticks:{ color:'#8bbdd4', font:{family:'JetBrains Mono', size:10} }
+  };
+}
+
+// ── TA GUIDE ──────────────────────────────────────────────────────────────────
+const TA_ROWS = [
+  [0,-1.5,-2,-2.5,-3,-3.5,-4,-4.5,-5,-5.5,-6,-6.5,-7,-7.5,-8,-9,-10,-11,-12,-13,-14,-15,-16],
+  // Banks columns for each pressure P15–P40 (same across all pressures in this guide)
+  // each row: [wb_bound, banks_value (same for all pressures in this dataset)]
+];
+const TA_FULL = [
+  {wb:0,    banks:0}, {wb:-1.5, banks:1}, {wb:-2.0, banks:2}, {wb:-2.5, banks:2},
+  {wb:-3.0, banks:3}, {wb:-3.5, banks:4}, {wb:-4.0, banks:5}, {wb:-4.5, banks:6},
+  {wb:-5.0, banks:7}, {wb:-5.5, banks:8}, {wb:-6.0, banks:9}, {wb:-6.5,banks:10},
+  {wb:-7.0,banks:11}, {wb:-7.5,banks:12}, {wb:-8.0,banks:12}, {wb:-9.0,banks:12},
+  {wb:-10, banks:12}, {wb:-11, banks:12}, {wb:-12, banks:12}, {wb:-13, banks:12},
+  {wb:-14, banks:12}, {wb:-15, banks:12}, {wb:-16, banks:12},
+];
+const TA_PRESSURES = [15,17.5,20,22.5,25,27.5,30,32.5,35,37.5,40];
+
+function renderTAGuide() {
+  const tbl   = document.getElementById('ta-guide-table');
+  const press = parseFloat(document.getElementById('ta-pressure-input').value) || 14;
+  const closestP = TA_PRESSURES.reduce((a,b) => Math.abs(b-press)<Math.abs(a-press)?b:a);
+  const currentWB = liveWeather ? liveWeather.wb : null;
+
+  // Header
+  tbl.querySelector('thead').innerHTML = '<tr><th>WB Lower Bound (°C)</th>' +
+    TA_PRESSURES.map(p => `<th${p===closestP?' style="color:var(--gold)"':''}>${p} bar</th>`).join('') + '</tr>';
+
+  // Body
+  tbl.querySelector('tbody').innerHTML = TA_FULL.map(row => {
+    const isHighlight = currentWB !== null && currentWB <= row.wb &&
+      (TA_FULL.indexOf(row) === 0 || currentWB > TA_FULL[TA_FULL.indexOf(row)-1].wb);
+    const cellClass = row.banks === 0 ? 'ta-cell-0' :
+                      row.banks <= 3  ? 'ta-cell-low' :
+                      row.banks <= 7  ? 'ta-cell-mid' : 'ta-cell-full';
+    return `<tr${isHighlight?' class="ta-row-highlight"':''}>
+      <td><strong>${row.wb}°C</strong></td>
+      ${TA_PRESSURES.map(p => `<td class="${cellClass}">${row.banks}</td>`).join('')}
+    </tr>`;
+  }).join('');
+}
+
+function highlightTARow(wb) {
+  renderTAGuide(); // re-render with new WB
+}
+
+// ── FAN GUN LOG SUBMIT ────────────────────────────────────────────────────────
+async function submitFanGunLog() {
+  const btn = document.getElementById('fg-submit-btn');
+  const required = ['fg-date','fg-shift','fg-operator','fg-gun','fg-location','fg-banks','fg-pressure','fg-timelog'];
+  for (const id of required) {
+    if (!document.getElementById(id).value) { toast('Please fill all required fields.','error'); return; }
+  }
+
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…';
+  try {
+    const res = await api({
+      action         : 'submitFanGunLog',
+      snowmakingDate : document.getElementById('fg-date').value,
+      shift          : document.getElementById('fg-shift').value,
+      operators      : document.getElementById('fg-operator').value,
+      fanGunId       : document.getElementById('fg-gun').value,
+      location       : document.getElementById('fg-location').value,
+      timeOfLog      : document.getElementById('fg-timelog').value,
+      banksOpen      : document.getElementById('fg-banks').value,
+      waterPressure  : document.getElementById('fg-pressure').value,
+      gunStartTime   : document.getElementById('fg-start').value,
+      gunStopTime    : document.getElementById('fg-stop').value,
+      subPI102       : document.getElementById('fg-pi102').value,
+      subPSL101      : document.getElementById('fg-psl101').value,
+      mainP101       : document.getElementById('fg-p101').value,
+      flowHigh       : document.getElementById('fg-flow-high').value,
+      flowLow        : document.getElementById('fg-flow-low').value,
+      pumpPT101      : document.getElementById('fg-pt101').value,
+      pumpTemp       : document.getElementById('fg-ptemp').value,
+      vsdKw          : document.getElementById('fg-vsd').value,
+      notes          : document.getElementById('fg-notes').value,
+    });
+    if (res.ok) { toast('Fan gun log saved successfully.','success'); clearFGForm(); }
+    else toast('Error: ' + (res.error||'Unknown'), 'error');
+  } catch(e) { toast('Network error: ' + e.message, 'error'); }
+  finally { btn.disabled=false; btn.innerHTML='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg> Submit Log Entry'; }
+}
+
+function clearFGForm() {
+  ['fg-date','fg-shift','fg-operator','fg-gun','fg-location','fg-banks','fg-pressure',
+   'fg-start','fg-stop','fg-pi102','fg-psl101','fg-p101','fg-flow-high','fg-flow-low',
+   'fg-pt101','fg-ptemp','fg-vsd','fg-notes','fg-timelog'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  setDefaultDates();
+}
+
+// ── PUMPHOUSE SUBMIT ──────────────────────────────────────────────────────────
+async function submitPumpHouse() {
+  const btn = document.getElementById('ph-submit-btn');
+  const required = ['ph-date','ph-shift','ph-operator','ph-pi102','ph-psl101','ph-p101','ph-flow-high','ph-flow-low'];
+  for (const id of required) {
+    if (!document.getElementById(id).value) { toast('Please fill all required fields.','error'); return; }
+  }
+
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Saving…';
+  try {
+    const res = await api({
+      action         : 'submitPumpHouse',
+      snowmakingDate : document.getElementById('ph-date').value,
+      shift          : document.getElementById('ph-shift').value,
+      operator       : document.getElementById('ph-operator').value,
+      subPI102       : document.getElementById('ph-pi102').value,
+      subPSL101      : document.getElementById('ph-psl101').value,
+      mainP101       : document.getElementById('ph-p101').value,
+      flowHigh       : document.getElementById('ph-flow-high').value,
+      flowLow        : document.getElementById('ph-flow-low').value,
+      pumpPT101      : document.getElementById('ph-pt101').value,
+      pumpTemp       : document.getElementById('ph-ptemp').value,
+      vsdKw          : document.getElementById('ph-vsd').value,
+      waterVolume    : document.getElementById('ph-water').value,
+      snowProduced   : document.getElementById('ph-snow').value,
+      reservoirLevel : document.getElementById('ph-reservoir').value,
+      notes          : document.getElementById('ph-notes').value,
+    });
+    if (res.ok) { toast('Pumphouse reading saved.','success'); clearPHForm(); loadLastPumpReading(); }
+    else toast('Error: '+(res.error||'Unknown'),'error');
+  } catch(e) { toast('Network error: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.innerHTML='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg> Submit Reading'; }
+}
+
+function clearPHForm() {
+  ['ph-date','ph-shift','ph-operator','ph-pi102','ph-psl101','ph-p101',
+   'ph-flow-high','ph-flow-low','ph-pt101','ph-ptemp','ph-vsd',
+   'ph-water','ph-snow','ph-reservoir','ph-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  setDefaultDates();
+}
+
+async function loadLastPumpReading() {
+  try {
+    const res = await api({ action:'getPumpHouseLog', limit:1 });
+    const row = (res.rows||[])[0];
+    if (!row) return;
+    setGaugeVal('ph-live-pi102',  row['Sub Pump PI102 (bar)']);
+    setGaugeVal('ph-live-psl101', row['Sub Pump PSL101 (bar)']);
+    setGaugeVal('ph-live-p101',   row['Main Pump P101 (bar)']);
+    setGaugeVal('ph-live-fh',     row['Flow Rate High L/m']);
+    setGaugeVal('ph-live-fl',     row['Flow Rate Low L/m']);
+    setGaugeVal('ph-live-pt101',  row['Pump PT101 (bar)']);
+  } catch(e) {}
+}
+
+// ── LOG VIEWERS ───────────────────────────────────────────────────────────────
+async function loadFGLog() {
+  const tbody = document.getElementById('fg-log-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="12"><div class="spinner"></div></td></tr>';
+  try {
+    const res = await api({
+      action : 'getFanGunLog',
+      date   : document.getElementById('fg-filter-date').value || '',
+      gunId  : document.getElementById('fg-filter-gun').value  || '',
+      shift  : document.getElementById('fg-filter-shift').value|| '',
+      limit  : 100
+    });
+    let rows = res.rows || [];
+
+    // Client-side hydrant filter
+    const hydrant = document.getElementById('fg-filter-hydrant').value;
+    if (hydrant) rows = rows.filter(r => r['Location'] === hydrant);
+
+    if (!rows.length) { tbody.innerHTML='<tr class="loading-row"><td colspan="12">No records found.</td></tr>'; return; }
+
+    tbody.innerHTML = rows.map(r => {
+      const shift   = r['Shift']||'';
+      const gunId   = r['Fan Gun ID']||'';
+      const hydrant = r['Location']||'—';
+      const shiftCls = shift.includes('Swing')?'badge-swing':shift.includes('Grave')?'badge-grave':'badge-day';
+      const gunCls   = gunId==='FG-01'?'badge-fg01':gunId==='FG-02'?'badge-fg02':'badge-fg03';
+      const hydrantZone = hydrant.startsWith('B') ? 'style="color:#4ade80" title="Beginner Slope"' : hydrant.startsWith('M') ? 'style="color:var(--cyan)" title="Main Slope"' : '';
+      return `<tr>
+        <td class="mono">${fmtDate(r['Snowmaking Date (Night of)'])}</td>
+        <td><span class="badge ${shiftCls}">${shiftShort(shift)}</span></td>
+        <td>${r['Operator(s)']||'—'}</td>
+        <td><span class="badge ${gunCls}">${gunId||'—'}</span></td>
+        <td><strong ${hydrantZone}>${hydrant}</strong></td>
+        <td class="mono">${r['Time of Log']||'—'}</td>
+        <td><strong>${r['Banks Open (0-12)']??'—'}</strong></td>
+        <td>${r['Water Pressure (bar)']||'—'}</td>
+        <td class="mono">${r['Gun Start Time']||'—'}</td>
+        <td class="mono">${r['Gun Stop Time']||'—'}</td>
+        <td style="max-width:180px;white-space:normal;font-size:0.75rem">${r['Notes']||''}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML='<tr class="loading-row"><td colspan="12">Error loading log.</td></tr>'; }
+}
+
+async function loadPHLog() {
+  const tbody = document.getElementById('ph-log-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="14"><div class="spinner"></div></td></tr>';
+  try {
+    const res = await api({
+      action : 'getPumpHouseLog',
+      date   : document.getElementById('ph-filter-date').value || '',
+      shift  : document.getElementById('ph-filter-shift').value|| '',
+      limit  : 100
+    });
+    const rows = res.rows || [];
+    if (!rows.length) { tbody.innerHTML='<tr class="loading-row"><td colspan="14">No records found.</td></tr>'; return; }
+
+    tbody.innerHTML = rows.map(r => {
+      const shift    = r['Shift']||'';
+      const shiftCls = shift.includes('Swing')?'badge-swing':shift.includes('Grave')?'badge-grave':'badge-day';
+      return `<tr>
+        <td class="mono">${fmtDate(r['Snowmaking Date (Night of)'])}</td>
+        <td><span class="badge ${shiftCls}">${shiftShort(shift)}</span></td>
+        <td>${r['Operator']||'—'}</td>
+        <td class="mono">${r['Sub Pump PI102 (bar)']??'—'}</td>
+        <td class="mono">${r['Sub Pump PSL101 (bar)']??'—'}</td>
+        <td class="mono">${r['Main Pump P101 (bar)']??'—'}</td>
+        <td class="mono">${r['Flow Rate High L/m']??'—'}</td>
+        <td class="mono">${r['Flow Rate Low L/m']??'—'}</td>
+        <td class="mono">${r['Pump Temp (°C)']??'—'}</td>
+        <td class="mono">${r['VSD Reading (kW)']??'—'}</td>
+        <td class="mono">${r['Water Volume (m3)']??'—'}</td>
+        <td class="mono">${r['Snow Produced (m3)']??'—'}</td>
+        <td class="mono">${r['Reservoir Level (%)']??'—'}</td>
+        <td style="max-width:160px;white-space:normal;font-size:0.75rem">${r['Notes']||''}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML='<tr class="loading-row"><td colspan="14">Error loading log.</td></tr>'; }
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Find first text node (skip child elements like .kpi-unit)
+  for (const node of el.childNodes) {
+    if (node.nodeType === 3) { node.textContent = val??'—'; return; }
+  }
+  el.textContent = val??'—';
+}
+
+function setGaugeVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = (val !== undefined && val !== '' && val !== null) ? val : '—';
+}
+
+function colourWBTile(wb) {
+  const el = document.getElementById('wx-wb');
+  if (!el) return;
+  el.className = 'wx-val ' + (wb <= WB_THRESHOLD ? 'critical' : wb <= 0 ? 'warn' : 'ok');
+}
+
+function setLiveDot(state, text) {
+  const dot  = document.getElementById('live-dot');
+  const span = document.getElementById('live-status-text');
+  dot.className  = 'live-dot ' + (state==='on'?'':state==='warn'?'warn':'off');
+  span.textContent = text;
+}
+
+function windDir(deg) {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg/22.5)%16] + ' (' + deg + '°)';
+}
+
+function fmtTime(d) {
+  if (!d||isNaN(d)) return '—';
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+
+function fmtDate(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d)) return val;
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function shiftShort(s) {
+  if (s.includes('Swing')) return 'Swing';
+  if (s.includes('Grave')) return 'Grave';
+  if (s.includes('Day'))   return 'Day';
+  return s;
+}
+
+function setDefaultDates() {
+  const today = new Date().toISOString().split('T')[0];
+  ['fg-date','ph-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = today;
+  });
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const tl = document.getElementById('fg-timelog');
+  if (tl && !tl.value) tl.value = timeStr;
+}
+
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toast-wrap');
+  const el   = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = (type==='success'?'✓':type==='error'?'✕':'ℹ') + ' ' + msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── SUBMISSIONS LOG ───────────────────────────────────────────────────────────
+
+let slFGRows = [];
+let slPHRows = [];
+
+async function loadSubLog() {
+  const tbody    = document.getElementById('sl-combined-tbody');
+  const nightWrap= document.getElementById('sl-nightly-wrap');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="13"><div class="spinner"></div></td></tr>';
+  nightWrap.innerHTML = '<div class="text-dim" style="padding:12px 0">Loading…</div>';
+
+  // Populate shift filter if empty
+  const slShiftSel = document.getElementById('sl-filter-shift');
+  if (slShiftSel && slShiftSel.options.length <= 1 && appConfig) {
+    (appConfig.shifts||[]).forEach(s => {
+      const o = document.createElement('option'); o.value=s; o.textContent=s;
+      slShiftSel.appendChild(o);
+    });
+  }
+
+  try {
+    const [fgRes, phRes] = await Promise.all([
+      api({ action:'getFanGunLog',    limit: 500 }),
+      api({ action:'getPumpHouseLog', limit: 500 })
+    ]);
+
+    slFGRows = fgRes.rows || [];
+    slPHRows = phRes.rows || [];
+
+    renderSubLog();
+  } catch(e) {
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="13">Error loading data.</td></tr>';
+  }
+}
+
+function renderSubLog() {
+  const type      = document.getElementById('sl-filter-type').value;
+  const fromDate  = document.getElementById('sl-filter-from').value;
+  const toDate    = document.getElementById('sl-filter-to').value;
+  const gunFilter = document.getElementById('sl-filter-gun').value;
+  const hydrantFilter = document.getElementById('sl-filter-hydrant').value;
+  const shiftFilt = document.getElementById('sl-filter-shift').value;
+
+  // Build combined rows
+  let combined = [];
+
+  if (type !== 'pumphouse') {
+    slFGRows.forEach(r => {
+      combined.push({ _type:'fangun', _ts: r['Timestamp']||'', ...r });
+    });
+  }
+  if (type !== 'fangun') {
+    slPHRows.forEach(r => {
+      combined.push({ _type:'pumphouse', _ts: r['Timestamp']||'', ...r });
+    });
+  }
+
+  // Date filter
+  if (fromDate) combined = combined.filter(r => {
+    const d = r['Snowmaking Date (Night of)'];
+    return d && String(d).slice(0,10) >= fromDate;
+  });
+  if (toDate) combined = combined.filter(r => {
+    const d = r['Snowmaking Date (Night of)'];
+    return d && String(d).slice(0,10) <= toDate;
+  });
+
+  // Gun filter (fangun only)
+  if (gunFilter) combined = combined.filter(r =>
+    r._type === 'pumphouse' || r['Fan Gun ID'] === gunFilter
+  );
+
+  // Hydrant filter (fangun only)
+  if (hydrantFilter) combined = combined.filter(r =>
+    r._type === 'pumphouse' || r['Location'] === hydrantFilter
+  );
+
+  // Shift filter
+  if (shiftFilt) combined = combined.filter(r =>
+    (r['Shift']||'') === shiftFilt
+  );
+
+  // Sort newest first by timestamp
+  combined.sort((a,b) => new Date(b._ts) - new Date(a._ts));
+
+  // Update KPIs
+  const fgCount  = slFGRows.length;
+  const phCount  = slPHRows.length;
+  const allDates = new Set([
+    ...slFGRows.map(r => String(r['Snowmaking Date (Night of)']).slice(0,10)),
+    ...slPHRows.map(r => String(r['Snowmaking Date (Night of)']).slice(0,10))
+  ]);
+  allDates.delete('');
+
+  setText('sl-total-fg',  fgCount);
+  setText('sl-total-ph',  phCount);
+  setText('sl-nights',    allDates.size);
+
+  // Last submission
+  const allByTs = [...slFGRows, ...slPHRows].sort((a,b) =>
+    new Date(b['Timestamp']||0) - new Date(a['Timestamp']||0)
+  );
+  if (allByTs.length) {
+    const last = allByTs[0];
+    const lastTs = new Date(last['Timestamp']);
+    setText('sl-last-sub', isNaN(lastTs) ? '—' : fmtDate(last['Timestamp']) + ' ' + fmtTime(lastTs));
+    setText('sl-last-sub-who', last['Operator(s)'] || last['Operator'] || '—');
+  }
+
+  // Count label
+  document.getElementById('sl-count-label').textContent =
+    combined.length + ' entries' + (fromDate||toDate||gunFilter||shiftFilt ? ' (filtered)' : '');
+
+  // Render table
+  const tbody = document.getElementById('sl-combined-tbody');
+  if (!combined.length) {
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="13">No submissions match the current filters.</td></tr>';
+  } else {
+    tbody.innerHTML = combined.map(r => renderSubRow(r)).join('');
+  }
+
+  // Render nightly summary
+  renderNightlySummary(combined);
+}
+
+function renderSubRow(r) {
+  const isFG     = r._type === 'fangun';
+  const shift    = r['Shift'] || '';
+  const gunId    = r['Fan Gun ID'] || '';
+  const hydrant  = r['Location'] || '';
+  const shiftCls = shift.includes('Swing')?'badge-swing':shift.includes('Grave')?'badge-grave':'badge-day';
+  const gunCls   = gunId==='FG-01'?'badge-fg01':gunId==='FG-02'?'badge-fg02':'badge-fg03';
+
+  const typeBadge = isFG
+    ? '<span class="badge" style="background:rgba(6,182,212,0.15);color:var(--cyan)">Fan Gun</span>'
+    : '<span class="badge" style="background:rgba(201,168,76,0.15);color:var(--gold)">Pump</span>';
+
+  const gunCell     = isFG && gunId
+    ? `<span class="badge ${gunCls}">${gunId}</span>`
+    : '—';
+
+  const hydrantColor = hydrant.startsWith('B') ? '#4ade80' : hydrant.startsWith('M') ? 'var(--cyan)' : 'var(--ice-dim)';
+  const hydrantTip   = hydrant.startsWith('B') ? 'Beginner Slope' : hydrant.startsWith('M') ? 'Main Slope' : '';
+  const hydrantCell  = isFG && hydrant
+    ? `<strong style="color:${hydrantColor}" title="${hydrantTip}">${hydrant}</strong>`
+    : '—';
+
+  const ts = r['Timestamp'] ? fmtTime(new Date(r['Timestamp'])) : '—';
+
+  return `<tr>
+    <td class="mono">${ts}</td>
+    <td>${typeBadge}</td>
+    <td class="mono">${fmtDate(r['Snowmaking Date (Night of)'])}</td>
+    <td><span class="badge ${shiftCls}">${shiftShort(shift)}</span></td>
+    <td>${r['Operator(s)'] || r['Operator'] || '—'}</td>
+    <td>${gunCell}</td>
+    <td>${hydrantCell}</td>
+    <td>${isFG ? (r['Banks Open (0-12)'] ?? '—') : '—'}</td>
+    <td>${isFG ? (r['Water Pressure (bar)'] ?? '—') : '—'}</td>
+    <td class="mono">${r['Flow Rate High L/m'] ?? '—'}</td>
+    <td class="mono">${r['Flow Rate Low L/m'] ?? '—'}</td>
+    <td class="mono">${r['Water Volume (m3)'] ?? '—'}</td>
+    <td class="mono">${r['Snow Produced (m3)'] ?? '—'}</td>
+    <td style="max-width:160px;white-space:normal;font-size:0.75rem">${r['Notes'] || ''}</td>
+  </tr>`;
+}
+
+function renderNightlySummary(combined) {
+  const wrap = document.getElementById('sl-nightly-wrap');
+
+  // Group by snowmaking date
+  const byNight = {};
+  combined.forEach(r => {
+    const d = String(r['Snowmaking Date (Night of)']).slice(0,10);
+    if (!d || d === 'undefined') return;
+    if (!byNight[d]) byNight[d] = { fg:[], ph:[] };
+    if (r._type === 'fangun')    byNight[d].fg.push(r);
+    else                         byNight[d].ph.push(r);
+  });
+
+  const nights = Object.keys(byNight).sort((a,b) => b.localeCompare(a));
+
+  if (!nights.length) {
+    wrap.innerHTML = '<div class="text-dim" style="padding:12px 0">No nightly data to display.</div>';
+    return;
+  }
+
+  wrap.innerHTML = nights.map(night => {
+    const fg   = byNight[night].fg;
+    const ph   = byNight[night].ph;
+    const guns     = [...new Set(fg.map(r => r['Fan Gun ID']).filter(Boolean))].join(', ') || '—';
+    const hydrants = [...new Set(fg.map(r => r['Location']).filter(Boolean))].sort().join(', ') || '—';
+    const shifts   = [...new Set([...fg,...ph].map(r => shiftShort(r['Shift']||'')).filter(Boolean))].join(' + ') || '—';
+    const ops      = [...new Set([...fg,...ph].map(r => r['Operator(s)']||r['Operator']||'').filter(Boolean))].join(', ') || '—';
+
+    // Water and snow from pumphouse
+    const totalWater = ph.reduce((s,r) => s + (parseFloat(r['Water Volume (m3)'])||0), 0);
+    const totalSnow  = ph.reduce((s,r) => s + (parseFloat(r['Snow Produced (m3)'])||0), 0);
+
+    // Banks range from FG log
+    const banksVals = fg.map(r => parseFloat(r['Banks Open (0-12)'])).filter(n => !isNaN(n));
+    const banksStr  = banksVals.length ? Math.min(...banksVals) + '–' + Math.max(...banksVals) : '—';
+
+    const nightLabel = new Date(night).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+    return `<div style="border-bottom:1px solid var(--border);padding:14px 0;" class="night-row">
+      <div class="flex-between" style="cursor:pointer" onclick="toggleNightRow(this)">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <span style="font-family:var(--font-head);font-size:1rem;font-weight:700">${nightLabel}</span>
+          <span class="tag">${fg.length} FG entries</span>
+          <span class="tag">${ph.length} pump entries</span>
+          <span class="tag">Guns: ${guns}</span>
+          <span class="tag">Hydrants: ${hydrants}</span>
+          <span class="tag">${shifts}</span>
+        </div>
+        <div style="display:flex;gap:20px;align-items:center;flex-shrink:0">
+          ${totalWater ? `<span style="font-family:var(--font-head);font-size:0.9rem;color:var(--cyan)">${totalWater.toFixed(1)} m³ water</span>` : ''}
+          ${totalSnow  ? `<span style="font-family:var(--font-head);font-size:0.9rem;color:var(--gold)">${totalSnow.toFixed(1)} m³ snow</span>` : ''}
+          <span style="color:var(--ice-dim);font-size:0.9rem">▼</span>
+        </div>
+      </div>
+      <div class="night-detail" style="display:none;margin-top:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+          <div class="pump-gauge"><div class="pump-gauge-label">Operators</div><div style="font-size:0.8rem;color:var(--snow);margin-top:4px">${ops}</div></div>
+          <div class="pump-gauge"><div class="pump-gauge-label">Hydrants Used</div><div style="font-size:0.85rem;color:var(--cyan);font-weight:700;margin-top:4px">${hydrants}</div></div>
+          <div class="pump-gauge"><div class="pump-gauge-label">Banks Range</div><div class="pump-gauge-val">${banksStr}</div></div>
+          <div class="pump-gauge"><div class="pump-gauge-label">Water Total</div><div class="pump-gauge-val">${totalWater ? totalWater.toFixed(1) : '—'}</div><div class="pump-gauge-unit">m³</div></div>
+          <div class="pump-gauge"><div class="pump-gauge-label">Snow Total</div><div class="pump-gauge-val">${totalSnow ? totalSnow.toFixed(1) : '—'}</div><div class="pump-gauge-unit">m³</div></div>
+        </div>
+        ${fg.length ? `
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--ice-dim);margin-bottom:6px">Fan Gun Entries</div>
+        <div class="log-table-wrap" style="max-height:200px;overflow-y:auto">
+          <table class="log-table">
+            <thead><tr><th>Time</th><th>Gun</th><th>Hydrant</th><th>Operator</th><th>Banks</th><th>Pressure</th><th>Start</th><th>Stop</th><th>Notes</th></tr></thead>
+            <tbody>
+              ${fg.map(r => {
+                const hyd = r['Location']||'—';
+                const hydCol = hyd.startsWith('B') ? '#4ade80' : hyd.startsWith('M') ? 'var(--cyan)' : 'var(--ice-dim)';
+                const hydTip = hyd.startsWith('B') ? 'Beginner Slope' : hyd.startsWith('M') ? 'Main Slope' : '';
+                return `<tr>
+                  <td class="mono">${r['Time of Log']||'—'}</td>
+                  <td><span class="badge badge-${(r['Fan Gun ID']||'').toLowerCase().replace('-','')}">${r['Fan Gun ID']||'—'}</span></td>
+                  <td><strong style="color:${hydCol}" title="${hydTip}">${hyd}</strong></td>
+                  <td>${r['Operator(s)']||'—'}</td>
+                  <td><strong>${r['Banks Open (0-12)']??'—'}</strong></td>
+                  <td>${r['Water Pressure (bar)']||'—'}</td>
+                  <td class="mono">${r['Gun Start Time']||'—'}</td>
+                  <td class="mono">${r['Gun Stop Time']||'—'}</td>
+                  <td style="font-size:0.72rem;white-space:normal;max-width:160px">${r['Notes']||''}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>` : ''}
+        ${ph.length ? `
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--ice-dim);margin:10px 0 6px">Pumphouse Entries</div>
+        <div class="log-table-wrap" style="max-height:200px;overflow-y:auto">
+          <table class="log-table">
+            <thead><tr><th>Timestamp</th><th>Operator</th><th>PI102</th><th>PSL101</th><th>P101</th><th>Flow Hi</th><th>Flow Lo</th><th>Temp</th><th>VSD kW</th><th>Water m³</th><th>Snow m³</th></tr></thead>
+            <tbody>
+              ${ph.map(r=>`<tr>
+                <td class="mono">${fmtTime(new Date(r['Timestamp']))}</td>
+                <td>${r['Operator']||'—'}</td>
+                <td class="mono">${r['Sub Pump PI102 (bar)']??'—'}</td>
+                <td class="mono">${r['Sub Pump PSL101 (bar)']??'—'}</td>
+                <td class="mono">${r['Main Pump P101 (bar)']??'—'}</td>
+                <td class="mono">${r['Flow Rate High L/m']??'—'}</td>
+                <td class="mono">${r['Flow Rate Low L/m']??'—'}</td>
+                <td class="mono">${r['Pump Temp (°C)']??'—'}</td>
+                <td class="mono">${r['VSD Reading (kW)']??'—'}</td>
+                <td class="mono">${r['Water Volume (m3)']??'—'}</td>
+                <td class="mono">${r['Snow Produced (m3)']??'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleNightRow(header) {
+  const detail = header.nextElementSibling;
+  const arrow  = header.querySelector('span:last-child');
+  const open   = detail.style.display === 'none';
+  detail.style.display = open ? 'block' : 'none';
+  arrow.textContent    = open ? '▲' : '▼';
+}
+
+function exportSubLog() {
+  const type  = document.getElementById('sl-filter-type').value;
+  let rows = [];
+
+  if (type !== 'pumphouse') {
+    slFGRows.forEach(r => rows.push({
+      Type        : 'Fan Gun',
+      Timestamp   : r['Timestamp'],
+      NightOf     : r['Snowmaking Date (Night of)'],
+      Shift       : r['Shift'],
+      Operator    : r['Operator(s)'],
+      GunID       : r['Fan Gun ID'],
+      Location    : r['Location'],
+      TimeOfLog   : r['Time of Log'],
+      Banks       : r['Banks Open (0-12)'],
+      Pressure    : r['Water Pressure (bar)'],
+      GunStart    : r['Gun Start Time'],
+      GunStop     : r['Gun Stop Time'],
+      FlowHigh    : r['Flow Rate High L/m'],
+      FlowLow     : r['Flow Rate Low L/m'],
+      WaterM3     : '',
+      SnowM3      : '',
+      Notes       : r['Notes'],
+    }));
+  }
+  if (type !== 'fangun') {
+    slPHRows.forEach(r => rows.push({
+      Type        : 'Pumphouse',
+      Timestamp   : r['Timestamp'],
+      NightOf     : r['Snowmaking Date (Night of)'],
+      Shift       : r['Shift'],
+      Operator    : r['Operator'],
+      GunID       : '',
+      Location    : '',
+      TimeOfLog   : '',
+      Banks       : '',
+      Pressure    : r['Main Pump P101 (bar)'],
+      GunStart    : '',
+      GunStop     : '',
+      FlowHigh    : r['Flow Rate High L/m'],
+      FlowLow     : r['Flow Rate Low L/m'],
+      WaterM3     : r['Water Volume (m3)'],
+      SnowM3      : r['Snow Produced (m3)'],
+      Notes       : r['Notes'],
+    }));
+  }
+
+  if (!rows.length) { toast('No data to export.','error'); return; }
+
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => JSON.stringify(r[h]??'')).join(','))
+  ].join('\n');
+
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'MJSR_Snowmaking_Log_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV exported successfully.','success');
+}
+</script>
+</body>
+</html>
