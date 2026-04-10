@@ -524,6 +524,10 @@ hr.divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v12H2zM5 5h6M5 8h6M5 11h4"/></svg>
     Submissions Log
   </button>
+  <button class="nav-tab" data-tab="maintenance" onclick="switchTab('maintenance')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2l-1.5 1.5M9 6L4 11l-1 2 2-1 5-5M11.5 3.5l1 1"/><circle cx="10" cy="5" r="1.5"/></svg>
+    Maintenance
+  </button>
 </nav>
 
 <div id="main">
@@ -646,6 +650,45 @@ hr.divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
       <div class="forecast-strip" id="forecast-strip">
         <div class="text-dim">Loading…</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Maintenance Status on Dashboard -->
+  <hr class="divider">
+  <div class="section-title">Maintenance Status <small><a href="#" onclick="switchTab('maintenance');return false;" style="color:var(--gold);text-decoration:none;font-size:0.78rem;">View Full Maintenance Tab →</a></small></div>
+  <div class="grid-3 mb-16" id="dash-maint-cards">
+    <div class="kpi-tile gold" id="dash-maint-FG-01">
+      <div class="kpi-label">FG-01</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <div class="kpi-value" id="dm-done-FG-01">—</div>
+        <div class="kpi-unit" id="dm-total-FG-01">/ — checks</div>
+      </div>
+      <div style="margin:8px 0 4px;height:6px;background:rgba(26,58,92,0.1);border-radius:3px;overflow:hidden">
+        <div id="dm-bar-FG-01" style="height:100%;border-radius:3px;background:var(--gold);width:0%;transition:width .8s ease"></div>
+      </div>
+      <div class="kpi-sub" id="dm-date-FG-01">Last check: —</div>
+    </div>
+    <div class="kpi-tile gold" id="dash-maint-FG-02">
+      <div class="kpi-label">FG-02</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <div class="kpi-value" id="dm-done-FG-02">—</div>
+        <div class="kpi-unit" id="dm-total-FG-02">/ — checks</div>
+      </div>
+      <div style="margin:8px 0 4px;height:6px;background:rgba(26,58,92,0.1);border-radius:3px;overflow:hidden">
+        <div id="dm-bar-FG-02" style="height:100%;border-radius:3px;background:var(--gold);width:0%;transition:width .8s ease"></div>
+      </div>
+      <div class="kpi-sub" id="dm-date-FG-02">Last check: —</div>
+    </div>
+    <div class="kpi-tile gold" id="dash-maint-FG-03">
+      <div class="kpi-label">FG-03</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <div class="kpi-value" id="dm-done-FG-03">—</div>
+        <div class="kpi-unit" id="dm-total-FG-03">/ — checks</div>
+      </div>
+      <div style="margin:8px 0 4px;height:6px;background:rgba(26,58,92,0.1);border-radius:3px;overflow:hidden">
+        <div id="dm-bar-FG-03" style="height:100%;border-radius:3px;background:var(--gold);width:0%;transition:width .8s ease"></div>
+      </div>
+      <div class="kpi-sub" id="dm-date-FG-03">Last check: —</div>
     </div>
   </div>
 
@@ -1162,6 +1205,158 @@ hr.divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
 
 </div><!-- /tab-sublog -->
 
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 6: MAINTENANCE
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-maintenance" class="tab-panel">
+
+  <!-- Summary KPI strip -->
+  <div class="grid-4 mb-16">
+    <div class="kpi-tile gold">
+      <div class="kpi-label">Total Checks (per gun)</div>
+      <div class="kpi-value" id="mt-total-checks">57</div>
+      <div class="kpi-sub">Across 8 categories</div>
+    </div>
+    <div class="kpi-tile ice">
+      <div class="kpi-label">Checks Completed</div>
+      <div class="kpi-value" id="mt-done-count">—</div>
+      <div class="kpi-sub" id="mt-gun-context">Select a gun below</div>
+    </div>
+    <div class="kpi-tile green">
+      <div class="kpi-label">Completion</div>
+      <div class="kpi-value" id="mt-pct">—<span class="kpi-unit">%</span></div>
+      <div class="kpi-sub" id="mt-last-date">Last check: —</div>
+    </div>
+    <div class="kpi-tile amber">
+      <div class="kpi-label">Outstanding</div>
+      <div class="kpi-value" id="mt-outstanding">—</div>
+      <div class="kpi-sub">Items not yet logged</div>
+    </div>
+  </div>
+
+  <!-- Gun selector tabs -->
+  <div class="inner-tabs" id="mt-gun-tabs">
+    <button class="inner-tab active" onclick="selectMaintGun('FG-01',this)">FG-01</button>
+    <button class="inner-tab" onclick="selectMaintGun('FG-02',this)">FG-02</button>
+    <button class="inner-tab" onclick="selectMaintGun('FG-03',this)">FG-03</button>
+  </div>
+
+  <!-- Two-column layout: checklist form + history log -->
+  <div class="grid-2">
+
+    <!-- LEFT: Checklist submission form -->
+    <div>
+      <div class="section-title" style="font-size:1.1rem">
+        Log Maintenance Checks
+        <small id="mt-selected-gun-label">FG-01</small>
+      </div>
+      <div class="card" style="padding:14px 16px">
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="form-group">
+            <label class="form-label">Technician<span class="req">*</span></label>
+            <select id="mt-technician" class="form-select">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date Completed<span class="req">*</span></label>
+            <input type="date" id="mt-date" class="form-input">
+          </div>
+        </div>
+
+        <!-- Category filter for checklist -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="mt-cat-filters">
+          <button class="chart-btn active" onclick="filterMaintCat('all',this)">All</button>
+          <button class="chart-btn" onclick="filterMaintCat('General',this)">General</button>
+          <button class="chart-btn" onclick="filterMaintCat('Turbine',this)">Turbine</button>
+          <button class="chart-btn" onclick="filterMaintCat('Nozzle Ring',this)">Nozzle Ring</button>
+          <button class="chart-btn" onclick="filterMaintCat('Valve Block',this)">Valve Block</button>
+          <button class="chart-btn" onclick="filterMaintCat('Electrical',this)">Electrical</button>
+          <button class="chart-btn" onclick="filterMaintCat('Compressor',this)">Compressor</button>
+          <button class="chart-btn" onclick="filterMaintCat('Lubrication',this)">Lubrication</button>
+          <button class="chart-btn" onclick="filterMaintCat('Swing/Height',this)">Swing/Height</button>
+        </div>
+
+        <!-- Checklist items -->
+        <div id="mt-checklist-wrap" style="max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:6px">
+          <div class="text-dim" style="padding:16px;text-align:center">Loading checklist…</div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="mt-submit-btn" onclick="submitMaintenanceLog()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
+            Save Checked Items
+          </button>
+          <button class="btn btn-secondary" onclick="toggleAllMaintChecks(true)">✓ Check All Visible</button>
+          <button class="btn btn-secondary" onclick="toggleAllMaintChecks(false)">✕ Uncheck All</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: Maintenance history log -->
+    <div>
+      <div class="section-title" style="font-size:1.1rem">Maintenance History <small id="mt-history-gun">FG-01</small></div>
+
+      <!-- Per-category completion breakdown -->
+      <div class="card mb-16" id="mt-category-breakdown" style="padding:14px 16px">
+        <div class="card-title">Completion by Category</div>
+        <div id="mt-cat-bars" style="display:flex;flex-direction:column;gap:8px">
+          <div class="text-dim">Loading…</div>
+        </div>
+      </div>
+
+      <!-- History table -->
+      <div class="log-filter-bar" style="margin-top:0">
+        <label>Category:</label>
+        <select id="mt-hist-cat" class="form-select" onchange="renderMaintHistory()">
+          <option value="">All Categories</option>
+          <option>General</option><option>Turbine</option><option>Nozzle Ring</option>
+          <option>Valve Block</option><option>Electrical</option><option>Compressor</option>
+          <option>Lubrication</option><option>Swing/Height</option>
+        </select>
+        <button class="btn btn-secondary" style="font-size:0.72rem;padding:6px 12px;margin-left:auto" onclick="loadMaintenanceData()">↺ Refresh</button>
+      </div>
+
+      <div class="log-table-wrap" style="max-height:480px;overflow-y:auto">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Category</th><th>Check Item</th><th>Technician</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="mt-history-tbody">
+            <tr class="loading-row"><td colspan="5"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /grid-2 -->
+
+  <!-- Full check reference table -->
+  <div class="section-title mt-20">Full Maintenance Schedule Reference
+    <small>57 checks · TechnoAlpin MMS Manual FAML00EN02_2021.1</small>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="log-table-wrap" style="margin-top:0">
+      <table class="log-table" id="mt-reference-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Category</th><th>Interval</th><th>Check Item</th><th>Status (current gun)</th>
+          </tr>
+        </thead>
+        <tbody id="mt-reference-tbody">
+          <tr class="loading-row"><td colspan="5"><div class="spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /tab-maintenance -->
+
 </div><!-- /main -->
 
 <!-- TOAST CONTAINER -->
@@ -1191,6 +1386,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   await refreshDashboard();
   await loadForecast();
   renderTAGuide();
+  loadMaintenanceSummaryDash();
   setInterval(refreshDashboard, REFRESH_MS);
 });
 
@@ -1204,6 +1400,7 @@ function switchTab(name) {
   if (name === 'fangun')  loadFGLog();
   if (name === 'pumphouse') { loadPHLog(); loadLastPumpReading(); }
   if (name === 'sublog')  loadSubLog();
+  if (name === 'maintenance') loadMaintenanceData();
 }
 
 function showFGInner(which) {
@@ -1260,6 +1457,12 @@ function populateSelects() {
     if (!sel) return;
     shifts.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
   });
+
+  // Maintenance technician dropdown
+  const mtTech = document.getElementById('mt-technician');
+  if (mtTech) {
+    ops.forEach(op => { const o=document.createElement('option'); o.value=op; o.textContent=op; mtTech.appendChild(o); });
+  }
 }
 
 
@@ -1783,7 +1986,7 @@ function shiftShort(s) {
 
 function setDefaultDates() {
   const today = new Date().toISOString().split('T')[0];
-  ['fg-date','ph-date'].forEach(id => {
+  ['fg-date','ph-date','mt-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.value) el.value = today;
   });
@@ -1802,7 +2005,249 @@ function toast(msg, type='info') {
   setTimeout(() => el.remove(), 4000);
 }
 
-// ── SUBMISSIONS LOG ───────────────────────────────────────────────────────────
+// ── MAINTENANCE ───────────────────────────────────────────────────────────────
+
+// State
+let maintCurrentGun   = 'FG-01';
+let maintAllData      = { checks: [], rows: [] };
+let maintCurrentCat   = 'all';
+let maintSummaryData  = null;
+
+const MAINT_CAT_COLOURS = {
+  'General'     : '#1a3a5c',
+  'Turbine'     : '#b8922e',
+  'Nozzle Ring' : '#16a34a',
+  'Valve Block' : '#0369a1',
+  'Electrical'  : '#7c3aed',
+  'Compressor'  : '#d97706',
+  'Lubrication' : '#059669',
+  'Swing/Height': '#dc2626',
+};
+
+const MAINT_INTERVAL_ORDER = [
+  'Start of Season','End of Season','50h / Commissioning','During Operation',
+  '500h','1000h / 2 Years','3000h','3 Years','4 Years','6 Years','10 Years'
+];
+
+async function loadMaintenanceData() {
+  try {
+    const [res, sumRes] = await Promise.all([
+      api({ action:'getMaintenance', gunId: maintCurrentGun }),
+      api({ action:'getMaintenanceSummary' })
+    ]);
+    maintAllData   = { checks: res.checks || [], rows: res.rows || [] };
+    maintSummaryData = sumRes.summary || {};
+    updateMaintKPIs();
+    renderMaintChecklist();
+    renderMaintHistory();
+    renderCatBreakdown();
+    renderMaintReferenceTable();
+    updateDashMaintTiles(sumRes);
+  } catch(e) { toast('Maintenance load error: ' + e.message, 'error'); }
+}
+
+async function loadMaintenanceSummaryDash() {
+  try {
+    const res = await api({ action:'getMaintenanceSummary' });
+    updateDashMaintTiles(res);
+  } catch(e) { console.warn('Maint summary load failed', e); }
+}
+
+function updateDashMaintTiles(res) {
+  if (!res || !res.summary) return;
+  const total = res.totalChecks || 57;
+  ['FG-01','FG-02','FG-03'].forEach(gun => {
+    const s = res.summary[gun];
+    if (!s) return;
+    const done = s.completedChecks || 0;
+    const pct  = Math.round((done / total) * 100);
+    const barCol = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626';
+    setText('dm-done-'+gun, done);
+    setText('dm-total-'+gun, '/ ' + total + ' checks');
+    const bar = document.getElementById('dm-bar-'+gun);
+    if (bar) { bar.style.width = pct+'%'; bar.style.background = barCol; }
+    const tile = document.getElementById('dash-maint-'+gun);
+    if (tile) tile.style.setProperty('--accent-color', barCol);
+    setText('dm-date-'+gun, s.lastDate ? 'Last: ' + fmtDate(s.lastDate) : 'No checks logged');
+  });
+}
+
+function selectMaintGun(gunId, btn) {
+  maintCurrentGun = gunId;
+  document.querySelectorAll('#mt-gun-tabs .inner-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  setText('mt-selected-gun-label', gunId);
+  setText('mt-history-gun', gunId);
+  loadMaintenanceData();
+}
+
+function filterMaintCat(cat, btn) {
+  maintCurrentCat = cat;
+  document.querySelectorAll('#mt-cat-filters .chart-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMaintChecklist();
+}
+
+function updateMaintKPIs() {
+  const s = maintSummaryData[maintCurrentGun];
+  if (!s) return;
+  const total = maintAllData.checks.length || 57;
+  const done  = s.completedChecks || 0;
+  const pct   = total > 0 ? Math.round((done/total)*100) : 0;
+  setText('mt-total-checks', total);
+  setText('mt-done-count', done);
+  setText('mt-pct', pct);
+  setText('mt-outstanding', total - done);
+  setText('mt-last-date', s.lastDate ? 'Last: ' + fmtDate(s.lastDate) + (s.lastTech ? ' · ' + s.lastTech : '') : 'No checks logged yet');
+  setText('mt-gun-context', maintCurrentGun);
+}
+
+function renderMaintChecklist() {
+  const wrap   = document.getElementById('mt-checklist-wrap');
+  const checks = maintAllData.checks;
+  const rows   = maintAllData.rows;
+
+  // Build set of completed check IDs for this gun
+  const doneIds = new Set(rows.filter(r => r['Gun ID'] === maintCurrentGun).map(r => r['Check ID']));
+
+  const filtered = maintCurrentCat === 'all' ? checks : checks.filter(c => c.category === maintCurrentCat);
+
+  if (!filtered.length) { wrap.innerHTML = '<div class="text-dim" style="padding:16px;text-align:center">No checks in this category.</div>'; return; }
+
+  // Group by category for section headers
+  const byCat = {};
+  filtered.forEach(c => {
+    if (!byCat[c.category]) byCat[c.category] = [];
+    byCat[c.category].push(c);
+  });
+
+  wrap.innerHTML = Object.entries(byCat).map(([cat, items]) => {
+    const catCol = MAINT_CAT_COLOURS[cat] || '#1a3a5c';
+    const catDone = items.filter(c => doneIds.has(c.id)).length;
+    return `
+      <div style="background:${catCol}12;border-bottom:1px solid var(--border)">
+        <div style="padding:7px 12px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--font-head);font-size:0.78rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${catCol}">${cat}</span>
+          <span style="font-size:0.72rem;color:var(--ice-dim)">${catDone}/${items.length}</span>
+        </div>
+      </div>
+      ${items.map(c => {
+        const isDone = doneIds.has(c.id);
+        return `<label style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);${isDone?'background:#f0fdf4':''}transition:background .15s" onmouseover="this.style.background='#f9f8f5'" onmouseout="this.style.background='${isDone?'#f0fdf4':''}'">
+          <input type="checkbox" data-id="${c.id}" ${isDone?'checked':''} style="margin-top:2px;flex-shrink:0;accent-color:${catCol}">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:0.82rem;color:var(--navy);line-height:1.4">${c.item}</div>
+            <div style="font-size:0.68rem;color:var(--ice-dim);margin-top:2px">${c.id} · <span style="color:${maintIntervalColour(c.interval)}">${c.interval}</span></div>
+          </div>
+        </label>`;
+      }).join('')}`;
+  }).join('');
+}
+
+function maintIntervalColour(interval) {
+  if (interval.includes('Season'))   return '#1a3a5c';
+  if (interval.includes('Operation')) return '#16a34a';
+  if (interval.includes('500h') || interval.includes('1000h') || interval.includes('3000h')) return '#d97706';
+  if (interval.includes('Year') || interval.includes('year')) return '#7c3aed';
+  return '#6b7280';
+}
+
+function toggleAllMaintChecks(checked) {
+  document.querySelectorAll('#mt-checklist-wrap input[type=checkbox]').forEach(cb => cb.checked = checked);
+}
+
+async function submitMaintenanceLog() {
+  const tech = document.getElementById('mt-technician').value;
+  const date = document.getElementById('mt-date').value;
+  if (!tech || !date) { toast('Please select a technician and date.', 'error'); return; }
+
+  const checked = [...document.querySelectorAll('#mt-checklist-wrap input[type=checkbox]:checked')];
+  if (!checked.length) { toast('No items checked — tick at least one check to save.', 'error'); return; }
+
+  const btn = document.getElementById('mt-submit-btn');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…';
+
+  try {
+    const entries = checked.map(cb => ({ checkId: cb.dataset.id, status: 'Done', dateCompleted: date }));
+    const res = await api({ action:'submitMaintenance', gunId: maintCurrentGun, technician: tech, entries });
+    if (res.ok) {
+      toast(entries.length + ' maintenance items saved for ' + maintCurrentGun + '.', 'success');
+      await loadMaintenanceData();
+    } else { toast('Error: ' + (res.error||'Unknown'), 'error'); }
+  } catch(e) { toast('Network error: ' + e.message, 'error'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg> Save Checked Items';
+  }
+}
+
+function renderMaintHistory() {
+  const tbody  = document.getElementById('mt-history-tbody');
+  const catFil = document.getElementById('mt-hist-cat').value;
+  let rows = maintAllData.rows.filter(r => r['Gun ID'] === maintCurrentGun);
+  if (catFil) rows = rows.filter(r => r['Category'] === catFil);
+
+  if (!rows.length) { tbody.innerHTML = '<tr class="loading-row"><td colspan="5">No maintenance history for ' + maintCurrentGun + '.</td></tr>'; return; }
+
+  tbody.innerHTML = rows.map(r => {
+    const cat    = r['Category'] || '';
+    const catCol = MAINT_CAT_COLOURS[cat] || '#1a3a5c';
+    return `<tr>
+      <td class="mono">${fmtDate(r['Date Completed'])}</td>
+      <td><span class="badge" style="background:${catCol}18;color:${catCol}">${cat}</span></td>
+      <td style="white-space:normal;font-size:0.78rem;max-width:240px">${r['Check Item']||'—'}</td>
+      <td>${r['Technician']||'—'}</td>
+      <td style="white-space:normal;font-size:0.75rem;max-width:160px;color:var(--ice-dim)">${r['Notes']||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCatBreakdown() {
+  const wrap = document.getElementById('mt-cat-bars');
+  const s    = maintSummaryData[maintCurrentGun];
+  if (!s || !s.byCategory) { wrap.innerHTML = '<div class="text-dim">No data.</div>'; return; }
+
+  wrap.innerHTML = Object.entries(s.byCategory).map(([cat, data]) => {
+    const pct    = data.total > 0 ? Math.round((data.done/data.total)*100) : 0;
+    const col    = MAINT_CAT_COLOURS[cat] || '#1a3a5c';
+    const barCol = pct >= 80 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
+    return `<div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:0.75rem;font-weight:600;color:${col}">${cat}</span>
+        <span style="font-size:0.72rem;color:var(--ice-dim)">${data.done}/${data.total}</span>
+      </div>
+      <div style="height:5px;background:rgba(26,58,92,0.1);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${barCol};border-radius:3px;transition:width .8s ease"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMaintReferenceTable() {
+  const tbody  = document.getElementById('mt-reference-tbody');
+  const checks = maintAllData.checks;
+  const doneIds = new Set(
+    maintAllData.rows.filter(r => r['Gun ID'] === maintCurrentGun).map(r => r['Check ID'])
+  );
+
+  if (!checks.length) { tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Loading…</td></tr>'; return; }
+
+  tbody.innerHTML = checks.map(c => {
+    const catCol = MAINT_CAT_COLOURS[c.category] || '#1a3a5c';
+    const isDone = doneIds.has(c.id);
+    const statusHtml = isDone
+      ? '<span class="badge" style="background:#f0fdf4;color:#166534">✓ Done</span>'
+      : '<span class="badge" style="background:#fff7ed;color:#9a3412">Pending</span>';
+    return `<tr style="${isDone?'background:#fafffe':''}">
+      <td class="mono" style="font-size:0.7rem;color:var(--ice-dim)">${c.id}</td>
+      <td><span class="badge" style="background:${catCol}18;color:${catCol}">${c.category}</span></td>
+      <td><span style="font-size:0.72rem;color:${maintIntervalColour(c.interval)}">${c.interval}</span></td>
+      <td style="white-space:normal;font-size:0.78rem;max-width:300px">${c.item}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
 
 let slFGRows = [];
 let slPHRows = [];
